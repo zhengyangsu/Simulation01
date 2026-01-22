@@ -113,15 +113,6 @@ public class Robot {
 		return scale * (size / 2.0);
 	}
 	
-	public void enlarge() {
-		
-		System.out.println(scale);
-		if (size*scale <= RobotPane.width/2) {
-			scale += 0.1;
-			//size = (int) (size * scale);
-		}
-		
-	}
 	
 	public void reset() {
 		scale = 1;

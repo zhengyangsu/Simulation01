@@ -20,7 +20,6 @@ public class RobotPane extends JPanel implements ActionListener{
 	public final static int width = 800;
 	public final static int hight = 600;
 	private Robot robot = new Robot();
-	private int spawn = 2;
 	private Timer t;
 	
 	public RobotPane() {
