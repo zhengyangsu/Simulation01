@@ -67,7 +67,6 @@ public class Robot {
 	     g.setColor(Color.black);
 	     g.fillOval(0, -size/4, size/10, size/10);
 	     
-	     
 	     g.setTransform(af);
 	}
 	
