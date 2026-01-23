@@ -20,17 +20,21 @@ public class RobotPane extends JPanel implements ActionListener{
 	public final static int paneWidth = 800;
 	public final static int paneHight = 600;
 	public final static int margin = 20;
-	public final static int width = paneWidth - 2* margin - 6;
-	public final static int hight = paneHight - 2* margin - 6;
-	public final static int lB = margin;
-	public final static int rB = margin + width;
-	public final static int tB = margin;
-	public final static int bB = margin + hight;
+	
+
 
 	
 	public final static Color green = new Color(0, 255, 65);
 	public final static Color amber = new Color(255, 140, 0);
-	public final static float stroke = 6;
+	public final static float stroke = 2;
+	
+	public final static int width = paneWidth - 2* margin - (int)stroke;
+	public final static int hight = paneHight - 2* margin - (int)stroke;
+	
+	public final static int lB = margin;
+	public final static int rB = margin + width;
+	public final static int tB = margin;
+	public final static int bB = margin + hight;
 
 	private Robot robot = new Robot();
 	private DustPile pile = new DustPile();
@@ -57,9 +61,8 @@ public class RobotPane extends JPanel implements ActionListener{
 	    );
 	    
 	    room.drawRoom(g2);
-	    //robot.drawPacman(g2);
-	    
 	    pile.drawDustPile(g2);
+	    robot.drawRobot(g2);
 	}
 	
 	

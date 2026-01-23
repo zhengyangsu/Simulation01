@@ -6,6 +6,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="/Users/Leon/Documents/WorkSpace3/core.jar"/>
+	<classpathentry kind="lib" path="M:/SFU/workBench/eclipse-workspace/core.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

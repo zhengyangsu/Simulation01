@@ -45,26 +45,26 @@ public class DustPile {
     }
     
     private void generateCluster() {
-        // More blobs = more organic
+    	
         int n = dice.nextInt(7, 13);
         blobs = new Blob[n];
 
-        // Spread controls how "puffy" the pile is around center
-        float spread = r * 1.2f;
+        // Spread controls radius the pile is around center
+        float spread = r * 2.2f;
 
         // First blob
-        blobs[0] = new Blob(0f, 0f, r * 2.2f, r * 1.8f);
+        blobs[0] = new Blob(0f, 0f, r * 2.1f, r * 1.8f);
 
         // Build the rest around the core
         for (int i = 1; i < n; i++) {
             // random polar offset (clustered near center)
-            float angle = (float) (dice.nextDouble() * Math.PI * 2);
-            float radius = (float) (Math.pow(dice.nextDouble(), 1.7) * spread); // bias inward
-            float ox = (float) (Math.cos(angle) * radius);
-            float oy = (float) (Math.sin(angle) * radius);
+            float angle = (float) (dice.nextDouble() * Math.PI * 2);//angle
+            float radius = (float) (Math.pow(dice.nextDouble(), 1.7) * spread); // distance from center
+            float ox = (float) (Math.cos(angle) * radius); //Cartesian x=r* cosθ
+            float oy = (float) (Math.sin(angle) * radius); //Cartesian y=r* sinθ
 
             // sizes vary a lot 
-            float w = (float) ((0.2 + dice.nextDouble() * 1.8) * r);
+            float w = (float) ((0.4 + dice.nextDouble() * 1.8) * r);
             float h = (float) ((0.6 + dice.nextDouble() * 1.9) * r);
 
             blobs[i] = new Blob(ox, oy, w, h);
