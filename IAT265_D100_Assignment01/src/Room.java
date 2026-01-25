@@ -34,8 +34,8 @@ public class Room {
 		this.width = dim.width;
 	    this.hight = dim.height;
 		pos = new PVector(width,  hight);
+		
 		AffineTransform af = g.getTransform();
-
 		g.setColor(color);
 		g.setStroke(new BasicStroke(RobotPane.stroke));
 		g.drawRect(margin, margin, width - 2*margin, hight - 2*margin);
@@ -54,7 +54,7 @@ public class Room {
 	    float spacingX = chairW + gapX;
 	    float spacingY = chairW + gapY;
 
-	    // choose a starting point (top-left chair center)
+	    // starting point top-left chair 
 	    float startX = width / 2f - spacingX;   // centers 3 chairs
 	    float startY = hight / 2f - spacingY/2; // centers 2 rows
 
@@ -79,8 +79,8 @@ public class Room {
 		
 		g.setColor(Color.BLACK);
 		g.setStroke(new BasicStroke(stroke));
+		
 		AffineTransform af = g.getTransform();
-
 		g.translate(p.x, p.y);
 		g.rotate(rot);
 		g.fillRoundRect(-w/2, -w/2, w, w, w/5, w/5);
@@ -108,4 +108,6 @@ public class Room {
 		g.setTransform(af);
 
 	}
+	
+	
 }

@@ -4,7 +4,6 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
@@ -22,7 +21,6 @@ public class Robot {
     private PVector pos, speed;
     private int dia;
 	private int disp;
-	//private int dir;
 	private Color color;
 	//private Random dice = new Random();
 	private double scale;
@@ -96,7 +94,7 @@ public class Robot {
 				// brushes Refactored
 				//g.rotate(brushAngle);
 		drawBrushes(g, 1);  // right brush
-		drawBrushes(g, -1); // left brush//draw brushes
+		drawBrushes(g, -1); // left brush
 		 
 		g.setColor(Color.BLACK);
 		
@@ -162,7 +160,7 @@ public class Robot {
 	    g.translate(pivotX, pivotY);
 
 	    // rotate brush
-	    g.rotate(brushAngle * side); // opposite spin feels good
+	    g.rotate(brushAngle * side); // opposite spin 
 
 	    // draw brush relative to (0,0)
 	    int count = 3;
@@ -183,25 +181,20 @@ public class Robot {
 	
 	public void move(Dimension panelSize) {
 		
-		/*theta += 0.005 * dir; 
-	    if ( Math.random()*32 < 1) {
-	      dir *= -1;
-	    }
-	    speed.set((float) (1* Math.cos(theta)), (float) (1* Math.sin(theta)));*/
-		
+		pos.add(speed);
 		collisionValidate(panelSize);
 		//advanceCollision(panelSize);
 		
-		pos.add(speed);
+		
 		brushAngle += brushSpeed;
 
-		// keep angle from growing forever (optional but good)
+		// keep angle from growing forever 
 		if (brushAngle > Math.PI * 2) {
 		    brushAngle -= Math.PI * 2;
 		}
-		reset(panelSize);
+		reset(panelSize);//if out of bounds, reset to center
 		
-		//System.out.println(pos);
+		System.out.println(pos);
 	}
 	
 	private Rectangle2D getBounds() {
@@ -291,13 +284,14 @@ public class Robot {
 		// returns the direction as angle
 		float angle = path.heading();
 
-		// make a vel that points toward the target and then move
+		// make a speed that points toward the target and then move
 		speed = PVector.fromAngle(angle);
 		speed.mult(2);
 
 		// check if bug reaches target
-		if (path.mag()- dia / 2 <= 10 ) {
+		if (path.mag() - (scale * dia) / 2 <= 0 ) {
 			reach = true;
+			speed.mult(0.5f);
 		}
 
 		return reach;

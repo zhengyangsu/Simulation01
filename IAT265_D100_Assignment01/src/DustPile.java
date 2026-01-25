@@ -27,7 +27,7 @@ public class DustPile {
     	r = 10;
 		pos = new PVector(dice.nextInt((int)(RobotPane.margin*mScale), dim.width - (int)(RobotPane.margin*mScale)),
 				dice.nextInt((int)(RobotPane.margin*mScale), dim.height - (int)(RobotPane.margin*mScale)));
-		System.out.println(pos);
+		//System.out.println(pos);
 		generateCluster();
     }
     
@@ -60,7 +60,7 @@ public class DustPile {
 
         // Build the rest around the core
         for (int i = 1; i < n; i++) {
-            // random polar offset (clustered near center)
+            // random polar offset 
             float angle = (float) (dice.nextDouble() * Math.PI * 2);//angle
             float radius = (float) (Math.pow(dice.nextDouble(), 1.7) * spread); // distance from center
             float ox = (float) (Math.cos(angle) * radius); //Cartesian x=r* cosθ
@@ -102,10 +102,4 @@ public class DustPile {
     	
     }
     
-    public void reset() {
-		scale = 1;
-		r = 50;
-		pos.set(RobotPane.width/2, RobotPane.hight/2);
-		
-	}
 }

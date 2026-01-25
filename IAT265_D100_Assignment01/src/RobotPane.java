@@ -2,6 +2,8 @@
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -26,16 +28,17 @@ public class RobotPane extends JPanel implements ActionListener{
 	
 	public final static Color green = new Color(0, 255, 65);
 	public final static Color amber = new Color(255, 140, 0);
-	public final static float stroke = 2;
+	public static float stroke = 2;
 	
-	public final static int width = paneWidth - 2* margin - (int)stroke;
-	public final static int hight = paneHight - 2* margin - (int)stroke;
-	
+	private int width = paneWidth - 2* margin - (int)stroke;
+	private int hight = paneHight - 2* margin - (int)stroke;
+	private static int count = 0;
 	
 
 	private Robot robot;
 	private DustPile pile;
 	private Room room;
+	private int fps = 24;
 	private Timer t;
 	private int pileTimer; // custom timer used to generate a seed after 5 seconds
 
@@ -51,9 +54,7 @@ public class RobotPane extends JPanel implements ActionListener{
 		pileTimer = 0;
 		t = new Timer(33, this);
 		t.start();*/
-		
-		//printStat();
-		
+				
 	}
 	
 	@Override
@@ -69,7 +70,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	    if (pile != null) pile.drawDustPile(g2, getSize());
 	    if (robot != null) robot.drawRobot(g2);
 	    if (room != null) room.drawRoom(g2, getSize());
-
+	    drawCounter(g2);
 	}
 	
 	
@@ -83,7 +84,7 @@ public class RobotPane extends JPanel implements ActionListener{
 		
         //System.out.println(pileTimer);
         
-		if (pileTimer < 300) // increase only when it's less than 10 seconds
+		if (pileTimer < fps*5) // increase only when it's less than 5 seconds. given 60 FPS
 			pileTimer++;
 		else {
 			pileTimer = 0;
@@ -92,7 +93,7 @@ public class RobotPane extends JPanel implements ActionListener{
 
 		if (pile != null && robot.approach(pile.getPos())) { // Only when seed is NOT NULL, it makes sense to approach it
 			pile = null; // If bug catches seed eat it by setting it to null so that it will be garbage
-							// collected by system
+			count++;				// collected by system
 		}
         
 
@@ -104,14 +105,29 @@ public class RobotPane extends JPanel implements ActionListener{
 		pile = new DustPile(getSize());
 		room = new Room(getSize());
 		pileTimer = 0;
-		t = new Timer(33, this);
+		t = new Timer(1000/fps, this);
 		t.start();
 	}
 	
 	//helper
-	private void printStat() {
-		System.out.println("panelSize " + getSize());
-		
+	private void drawCounter(Graphics2D g2) {
+		String text = "" + count;
 
+	    g2.setColor(green);
+	    //g2.setFont(g2.getFont().deriveFont(48f));
+	    g2.setFont(new Font("Monospaced", Font.BOLD, 32));
+	    FontMetrics fm = g2.getFontMetrics();
+
+	    int textW = fm.stringWidth(text);
+	    int ascent = fm.getAscent();
+	    int descent = fm.getDescent();
+
+	    int cx = getWidth() / 2;
+	    int cy = getHeight() / 2;
+
+	    int x = cx - textW / 2;
+	    int y = cy + (ascent - descent) / 2;//center text vertically
+
+	    g2.drawString(text, x, y);
 	}
 }
