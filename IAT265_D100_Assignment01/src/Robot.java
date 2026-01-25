@@ -4,10 +4,13 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.util.Random;
+
+
 import processing.core.PVector;
 
 
@@ -19,53 +22,81 @@ public class Robot {
     private PVector pos, speed;
     private int dia;
 	private int disp;
+	//private int dir;
 	private Color color;
-	private Random dice = new Random();
+	//private Random dice = new Random();
 	private double scale;
-	private double left;
-    private double right;
-    private double top;
-    private double bottom;
+	//private double left;
+    //private double right;
+    //private double top;
+    //private double bottom;
     private double theta;
+    private double brushAngle = 0;
+    private double brushSpeed = 0.25; // radians per frame
+  
+    
+	
 	
 	//constructor
-	public Robot() {
+	public Robot(Dimension dim) {
 		dia = 70;
-		disp = 20;
-		scale = dice.nextInt(1, 2);
-		pos = new PVector(RobotPane.width/2,  RobotPane.hight/2);
-		speed = new PVector(dice.nextInt(1, disp), dice.nextInt(1, disp));
-		theta = Math.toRadians(-90);
-		
-		left   = pos.x - scale*(dia/2);
-	    right  = (int)pos.x + scale*(dia/2);
-	    top    = (int)pos.y - scale*(dia/2);
-	    bottom = (int)pos.y + scale*(dia/2);
+		disp = 1;
+		scale = 0.7;
+		//dir = 1;
+		pos = new PVector(dim.width/2,  dim.height/2);
+		//speed = new PVector(dice.nextInt(1, disp), dice.nextInt(1, disp));
+		speed = new PVector(disp,0);
+		theta = Math.toRadians(90);
+
+		//left   = pos.x - scale*(dia/2);
+	    //right  = (int)pos.x + scale*(dia/2);
+	    //top    = (int)pos.y - scale*(dia/2);
+	    //bottom = (int)pos.y + scale*(dia/2);
+	    
+	   
 		
 		color = RobotPane.green;
 	}
 	
 	//overloading
-	public Robot(int x, int y, int size, Color c, int xSpeed, int ySpeed) {
+	/*public Robot(int x, int y, int size, Color c, int xSpeed, int ySpeed) {
 		this.pos = new PVector(x, y);
 		this.speed = new PVector(xSpeed, ySpeed);
 		this.dia = size;
 		color = c;
 		
-	}
+	}*/
 
 	
 	public void drawRobot(Graphics2D g) {
 		 
-		AffineTransform af = g.getTransform();
 		
-		g.setStroke(new BasicStroke(RobotPane.stroke));
+		AffineTransform af = g.getTransform();
+		g.setColor(color);
+		g.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
 		g.translate((int)pos.x, (int)pos.y);
 		g.rotate(theta);
+		g.rotate(speed.heading());
+
 		
 		g.scale(scale, scale);
-		if (speed.x < 0) g.scale(1, -1);
-		 
+		if (speed.x < 0) { 
+			g.scale(-1, 1); // axis rotated so flipping x
+			//System.out.println("Flipped");
+		}
+
+		//brushes
+				/*g.drawLine(-27, -22, -32, -33);
+				g.drawLine(-27, -22, -37, -31);
+				g.drawLine(-27, -22, -38, -25);
+				g.drawLine(27, -22, 32, -33);
+				g.drawLine(27, -22, 37, -31);
+				g.drawLine(27, -22, 38, -25);*/
+
+				// brushes Refactored
+				//g.rotate(brushAngle);
+		drawBrushes(g, 1);  // right brush
+		drawBrushes(g, -1); // left brush//draw brushes
 		 
 		g.setColor(Color.BLACK);
 		
@@ -108,66 +139,171 @@ public class Robot {
 		g.drawLine(-10, -18, -7, -18);
 		g.drawLine(10, -18, 7, -18);
 
-		//brushes
-		g.drawLine(-27, -22, -32, -33);
-		g.drawLine(-27, -22, -37, -31);
-		g.drawLine(-27, -22, -38, -25);
-		g.drawLine(27, -22, 32, -33);
-		g.drawLine(27, -22, 37, -31);
-		g.drawLine(27, -22, 38, -25);
+		
 
-		g.draw(path);
+		
 		g.setTransform(af);
 		
-		//g.rotate(speed.heading());
 	}
 	
 
+	private void drawBrushes(Graphics2D g, int side) {
+		// TODO Auto-generated method stub
+		int pivotX = 27 * side;
+	    int pivotY = -22;
+
+	    int length = 18;
+	    double spread = Math.toRadians(20);
+	    double baseAngle = Math.toRadians(-135);
+
+	    AffineTransform brushAt = g.getTransform();
+
+	    // move pivot to origin
+	    g.translate(pivotX, pivotY);
+
+	    // rotate brush
+	    g.rotate(brushAngle * side); // opposite spin feels good
+
+	    // draw brush relative to (0,0)
+	    int count = 3;
+	    for (int i = 0; i < count; i++) {
+	        double t = (i - (count - 1) / 2.0);
+	        double a = baseAngle + t * spread;
+
+	        int endX = (int)(Math.cos(a) * length);
+	        int endY = (int)(Math.sin(a) * length);
+
+	        g.drawLine(0, 0, endX, endY);
+	    }
+
+	    g.setTransform(brushAt);
+
+	}
 	
-	public void move() {
-		//pos.add(speed);
+	
+	public void move(Dimension panelSize) {
+		
+		/*theta += 0.005 * dir; 
+	    if ( Math.random()*32 < 1) {
+	      dir *= -1;
+	    }
+	    speed.set((float) (1* Math.cos(theta)), (float) (1* Math.sin(theta)));*/
+		
+		collisionValidate(panelSize);
+		//advanceCollision(panelSize);
+		
+		pos.add(speed);
+		brushAngle += brushSpeed;
+
+		// keep angle from growing forever (optional but good)
+		if (brushAngle > Math.PI * 2) {
+		    brushAngle -= Math.PI * 2;
+		}
+		reset(panelSize);
+		
 		//System.out.println(pos);
 	}
 	
-	public void collisionValidate(Dimension panelSize) {
+	private Rectangle2D getBounds() {
 		
 		
-		double nDia = scale * (dia / 2.0);
-	    left   = pos.x - nDia;
-	    right  = pos.x + nDia;
-	    top    = pos.y - nDia;
-	    bottom = pos.y + nDia;
+		/*double radius = dia / 2.0;
+		double marginX = maxX + radius;
+		double marginY = maxY + radius;
 		
-	    if (left <= 0 || right >= panelSize.width) {
+		
+		
+		double r = scale * (dia / 2.0);
+	    left   = pos.x - r;
+	    right  = pos.x + r;
+	    top    = pos.y - r;
+	    bottom = pos.y + r;*/
+		
+		double brushMargin = scale * 16;
+		double r = scale * (dia / 2.0);
+		double x   = pos.x - r - brushMargin;
+	    double y    = pos.y - r - brushMargin;
+	    double size   = 2 * (r + brushMargin);
+	    
+		
+	    //System.out.println("Robot bounds left: " + left + ", top: " + top + ", width: " + (scale * 2 * (radius + marginX)) + ", height: " + (scale * 2 * radius + marginY));
+	    //System.out.println("Robot position: " + pos);
+	    //System.out.println("maxX: " + maxX + ", maxY: " + maxY + ", minX: " + minX + ", minY: " + minY);
+		//return new Rectangle2D.Double(left, top, scale * 2 * (radius + marginX), scale * 2 * radius + marginY);
+		return new Rectangle2D.Double(x, y, size, size);
+
+	}
+	
+	private void collisionValidate(Dimension panelSize) {
+		
+	    /*System.out.println(
+	    	    "runtime right = " + (panelSize.width - RobotPane.margin) +
+	    	    " | static rB = " + RobotPane.rB
+	    	);*/
+		
+		
+		
+		Rectangle2D bounds = getBounds();
+		
+	    
+	    if (bounds.getMinX() <= RobotPane.margin || bounds.getMaxX() >= panelSize.width - RobotPane.margin) {
 	        speed.x *= -1;
-	        //System.out.println("x reverse");
-	        
+	        //System.out.println("pos.x " + pos.x);
+
 	    }
 
-	    if (top <= 0 || bottom >= panelSize.height) {
+	    if (bounds.getMinY() <= RobotPane.margin || bounds.getMaxY() >= panelSize.height - RobotPane.margin) {
 	        speed.y *= -1;
-	        //System.out.println("y reverse");
-	        
+	        //System.out.println("pos.y " + pos.y);
+
 	    }
 	}
 	
-	public Rectangle2D getBounds() {
-		double nDia = scale * (dia / 2.0);
-		double x = pos.x - nDia;
-		double y = pos.y - nDia;
-		return new Rectangle2D.Double(x, y,nDia*2, nDia*2);
-	}
+	
 	
 	public double getRadius() {
 		return scale * (dia / 2.0);
 	}
 	
 	
-	public void reset() {
-		scale = 1;
-		dia = 50;
-		pos.set(RobotPane.width/2, RobotPane.hight/2);
-		
+	private void reset(Dimension panelSize) {
+		Rectangle2D panelBounds =
+			    new Rectangle2D.Double(
+			        0,
+			        0,
+			        panelSize.width,
+			        panelSize.height
+			    );
+
+			if (!panelBounds.contains(getBounds())) {
+			    pos.set(panelSize.width / 2f, panelSize.height / 2f);
+			}
+
+
 	}
+	
+	boolean approach(PVector targ) {
+		boolean reach = false;
+
+		// calculate the path to target point
+		PVector path = PVector.sub(targ, pos);
+
+		// returns the direction as angle
+		float angle = path.heading();
+
+		// make a vel that points toward the target and then move
+		speed = PVector.fromAngle(angle);
+		speed.mult(2);
+
+		// check if bug reaches target
+		if (path.mag()- dia / 2 <= 10 ) {
+			reach = true;
+		}
+
+		return reach;
+	}
+	
+	
+	
 }
 

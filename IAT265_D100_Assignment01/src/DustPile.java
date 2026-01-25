@@ -1,4 +1,5 @@
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import java.util.Random;
@@ -10,20 +11,22 @@ public class DustPile {
 	private PVector pos;
     private int r;
     private double scale;
-    private int left;
+    /*private int left;
     private int right;
     private int top;
-    private int bottom;
+    private int bottom;*/
 	private Color color;
 	private Random dice = new Random();
+	private double mScale = 1.5;
+	private
 	Blob[] blobs;
 	
     
-    public DustPile() {
+    public DustPile(Dimension dim) {
     	color = RobotPane.green;
     	r = 10;
-		pos = new PVector(dice.nextInt(RobotPane.lB, RobotPane.rB),
-				dice.nextInt(RobotPane.tB, RobotPane.bB));
+		pos = new PVector(dice.nextInt((int)(RobotPane.margin*mScale), dim.width - (int)(RobotPane.margin*mScale)),
+				dice.nextInt((int)(RobotPane.margin*mScale), dim.height - (int)(RobotPane.margin*mScale)));
 		System.out.println(pos);
 		generateCluster();
     }
@@ -72,8 +75,15 @@ public class DustPile {
         }
     }
     
-    public void drawDustPile(Graphics2D g) {
+    public void drawDustPile(Graphics2D g, Dimension dim) {
+		 
 		 AffineTransform old = g.getTransform();
+		 g.setColor(color);
+		 /*
+		  * pos = new PVector(dice.nextInt((int)(RobotPane.margin*mScale), dim.width - (int)(RobotPane.margin*mScale)),
+					dice.nextInt((int)(RobotPane.margin*mScale), dim.height - (int)(RobotPane.margin*mScale)));
+		  */
+		 
 		 g.translate(pos.x, pos.y);
 		 for (Blob b : blobs) {
 	            int x = Math.round(b.ox - b.w / 2f);
@@ -85,6 +95,11 @@ public class DustPile {
 	     g.setTransform(old);
 	     
 
+    }
+    
+    public PVector getPos() {
+		return pos;
+    	
     }
     
     public void reset() {

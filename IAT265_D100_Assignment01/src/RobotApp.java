@@ -9,10 +9,13 @@ public class RobotApp extends JFrame{
 	public RobotApp(String title) {
 		super(title);
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		RobotPane pacmanPane = new RobotPane();
-		this.add(pacmanPane);
+		RobotPane robotPane = new RobotPane();
+		
+		this.add(robotPane);
 		this.pack(); 	// window's size is rather determined by 
 						// packing to BallPanel's size
+		robotPane.simulationBegin();
+
 		this.setLocationRelativeTo(null); // center JFrame window
 		this.setVisible(true);
 	}

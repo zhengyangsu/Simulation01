@@ -19,7 +19,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	
 	public final static int paneWidth = 800;
 	public final static int paneHight = 600;
-	public final static int margin = 20;
+	public final static int margin = 40;
 	
 
 
@@ -31,23 +31,29 @@ public class RobotPane extends JPanel implements ActionListener{
 	public final static int width = paneWidth - 2* margin - (int)stroke;
 	public final static int hight = paneHight - 2* margin - (int)stroke;
 	
-	public final static int lB = margin;
-	public final static int rB = margin + width;
-	public final static int tB = margin;
-	public final static int bB = margin + hight;
+	
 
-	private Robot robot = new Robot();
-	private DustPile pile = new DustPile();
-	private Room room = new Room();
+	private Robot robot;
+	private DustPile pile;
+	private Room room;
 	private Timer t;
+	private int pileTimer; // custom timer used to generate a seed after 5 seconds
+
 	
 	public RobotPane() {
 		super();
 		this.setPreferredSize(new Dimension(width, hight));
 		
 		this.setBackground(Color.BLACK);
+		/*robot = new Robot();
+		pile = new DustPile(width, hight);
+		room = new Room(width, hight);
+		pileTimer = 0;
 		t = new Timer(33, this);
-		t.start();
+		t.start();*/
+		
+		//printStat();
+		
 	}
 	
 	@Override
@@ -60,9 +66,10 @@ public class RobotPane extends JPanel implements ActionListener{
 	        RenderingHints.VALUE_ANTIALIAS_ON
 	    );
 	    
-	    room.drawRoom(g2);
-	    pile.drawDustPile(g2);
-	    robot.drawRobot(g2);
+	    if (pile != null) pile.drawDustPile(g2, getSize());
+	    if (robot != null) robot.drawRobot(g2);
+	    if (room != null) room.drawRoom(g2, getSize());
+
 	}
 	
 	
@@ -70,14 +77,41 @@ public class RobotPane extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent arg0) {
 		// TODO Auto-generated method stub
 		
-		robot.move();
-		Rectangle2D rBound = robot.getBounds();
-        robot.collisionValidate(getSize());
+		if (robot != null) robot.move(getSize());
+		//Rectangle2D rBound = robot.getBounds();
+        //robot.collisionValidate(getSize());
 		
+        //System.out.println(pileTimer);
+        
+		if (pileTimer < 300) // increase only when it's less than 10 seconds
+			pileTimer++;
+		else {
+			pileTimer = 0;
+			if (pile == null) pile = new DustPile(getSize()); // produce a seed when it's 10 seconds since program launches
+		}
+
+		if (pile != null && robot.approach(pile.getPos())) { // Only when seed is NOT NULL, it makes sense to approach it
+			pile = null; // If bug catches seed eat it by setting it to null so that it will be garbage
+							// collected by system
+		}
+        
 
 		repaint();
 	}
-
-	//helper
 	
+	public void simulationBegin() {
+		robot = new Robot(getSize());
+		pile = new DustPile(getSize());
+		room = new Room(getSize());
+		pileTimer = 0;
+		t = new Timer(33, this);
+		t.start();
+	}
+	
+	//helper
+	private void printStat() {
+		System.out.println("panelSize " + getSize());
+		
+
+	}
 }
