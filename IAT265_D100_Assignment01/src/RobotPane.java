@@ -35,7 +35,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	private static int count = 0;
 	
 
-	private Robot robot;
+	private ArrayList<Robot> robot;
 	private DustPile pile;
 	private Room room;
 	private int fps = 24;
@@ -84,11 +84,11 @@ public class RobotPane extends JPanel implements ActionListener{
 		
         //System.out.println(pileTimer);
         
-		if (pileTimer < fps*5) // increase only when it's less than 5 seconds. given 60 FPS
+		if (pileTimer < fps*5) // increase only when it's less than 5 seconds. given 24 FPS
 			pileTimer++;
 		else {
 			pileTimer = 0;
-			if (pile == null) pile = new DustPile(getSize()); // produce a seed when it's 10 seconds since program launches
+			if (pile == null) pile = new DustPile(getSize()); // produce a pile every 5 seconds
 		}
 
 		if (pile != null && robot.approach(pile.getPos())) { // Only when seed is NOT NULL, it makes sense to approach it
