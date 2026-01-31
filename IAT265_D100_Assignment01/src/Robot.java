@@ -4,10 +4,9 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Path2D;
-import java.awt.geom.Rectangle2D;
-import java.util.Random;
+import java.awt.Shape;
+import java.awt.geom.*;
+//import java.util.Random;
 
 
 import processing.core.PVector;
@@ -31,7 +30,9 @@ public class Robot {
     private double theta;
     private double brushAngle = 0;
     private double brushSpeed = 0.25; // radians per frame
-  
+    private boolean lightOn;
+    private Area robotArea;
+    private int timer;
     
 	
 	
@@ -45,7 +46,9 @@ public class Robot {
 		//speed = new PVector(dice.nextInt(1, disp), dice.nextInt(1, disp));
 		speed = new PVector(disp,0);
 		theta = Math.toRadians(90);
-
+		lightOn = false;
+		robotArea = new Area();
+		timer =0;
 		//left   = pos.x - scale*(dia/2);
 	    //right  = (int)pos.x + scale*(dia/2);
 	    //top    = (int)pos.y - scale*(dia/2);
@@ -69,7 +72,7 @@ public class Robot {
 	public void drawRobot(Graphics2D g) {
 		 
 		
-		AffineTransform af = g.getTransform();
+		/*AffineTransform af = g.getTransform();
 		g.setColor(color);
 		g.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
 		g.translate((int)pos.x, (int)pos.y);
@@ -83,16 +86,7 @@ public class Robot {
 			//System.out.println("Flipped");
 		}
 
-		//brushes
-				/*g.drawLine(-27, -22, -32, -33);
-				g.drawLine(-27, -22, -37, -31);
-				g.drawLine(-27, -22, -38, -25);
-				g.drawLine(27, -22, 32, -33);
-				g.drawLine(27, -22, 37, -31);
-				g.drawLine(27, -22, 38, -25);*/
-
-				// brushes Refactored
-				//g.rotate(brushAngle);
+		
 		drawBrushes(g, 1);  // right brush
 		drawBrushes(g, -1); // left brush
 		 
@@ -140,6 +134,89 @@ public class Robot {
 		
 
 		
+		g.setTransform(af);*/
+		
+		
+		AffineTransform af = g.getTransform();
+		
+		g.setColor(color);
+		g.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
+		
+		//transform stack
+		g.translate(pos.x, pos.y);
+		g.rotate(theta);
+		g.rotate(speed.heading());
+		g.scale(scale, scale);
+		
+		if (speed.x < 0) {
+		    g.scale(-1, 1); // flip
+		}
+		
+		drawBrushes(g, 1);
+		drawBrushes(g, -1);
+		
+		//body shapes (local coords)
+		
+		// outer circle
+		Shape outer = new Ellipse2D.Double(-dia / 2.0, -dia / 2.0, dia, dia);
+		g.setColor(Color.BLACK);
+		g.fill(outer);
+		g.setColor(color);
+		g.draw(outer);
+		robotArea.add(new Area(outer));
+
+		// inner circle
+		double d = dia * 4.0 / 5.0;
+		Shape inner = new Ellipse2D.Double(-d / 2.0, -d / 2.0, d, d);
+		g.draw(inner);
+		
+		// button circle
+		d = dia * 1.0 / 10.0;
+		Shape button = new Ellipse2D.Double(-d / 2.0, d + 5, d, d);
+		if (lightOn && timer > 24) {
+			g.setColor(color);
+		    g.fill(button);
+		    timer = 0;
+		} else {
+		    g.setColor(Color.BLACK);
+		    g.fill(button);
+		    timer++;
+		}
+		
+		//g.setColor(color);
+		g.draw(button);
+		
+		// power panel (arc + two lines)
+		g.setColor(color);
+		d = dia / 4.0;
+		Shape panelArc = new Arc2D.Double(-d / 2.0, d - 10, d, d, 0, 180, Arc2D.OPEN);
+		Shape panelLineL = new Line2D.Double(-d / 2.0, d, -d / 2.0, 33);
+		Shape panelLineR = new Line2D.Double(-d / 2.0 + d, d, -d / 2.0 + d, 33);
+		
+		g.draw(panelArc);
+		g.draw(panelLineL);
+		g.draw(panelLineR);
+		
+		//face
+		Path2D face = new Path2D.Double();
+		face.moveTo(-15, -23);
+		face.lineTo(-15, -15);
+		face.quadTo(-15, -10, -10, -10);
+		face.lineTo(10, -10);
+		face.quadTo(15, -10, 15, -15);
+		face.lineTo(15, -23);
+		g.draw(face);
+
+
+		// eyes + brows
+		Shape eye = new RoundRectangle2D.Double(-3 / 2.0, -20, 3, 4, 2, 2);
+		Shape browL = new Line2D.Double(-10, -18, -7, -18);
+		Shape browR = new Line2D.Double(10, -18, 7, -18);
+		
+		g.draw(eye);
+		g.draw(browL);
+		g.draw(browR);
+		
 		g.setTransform(af);
 		
 	}
@@ -147,7 +224,8 @@ public class Robot {
 
 	private void drawBrushes(Graphics2D g, int side) {
 		// TODO Auto-generated method stub
-		int pivotX = 27 * side;
+		
+		/*int pivotX = 27 * side;
 	    int pivotY = -22;
 
 	    int length = 18;
@@ -174,12 +252,45 @@ public class Robot {
 	        g.drawLine(0, 0, endX, endY);
 	    }
 
-	    g.setTransform(brushAt);
+	    g.setTransform(brushAt);*/
+		
+		int pivotX = 27 * side;
+	    int pivotY = -22;
+
+	    double length = 18;                
+	    double spread = Math.toRadians(20);
+	    double baseAngle = Math.toRadians(-135);
+
+	    AffineTransform old = g.getTransform();
+
+	    // move pivot to origin
+	    g.translate(pivotX, pivotY);
+
+	    // rotate brush
+	    g.rotate(brushAngle * side);
+
+	    int count = 3;
+	    for (int i = 0; i < count; i++) {
+	        double t = (i - (count - 1) / 2.0);
+	        double a = baseAngle + t * spread;
+
+	        double endX = Math.cos(a) * length;
+	        double endY = Math.sin(a) * length;
+
+	        Shape bristle = new Line2D.Double(0, 0, endX, endY);
+	        robotArea.add(new Area(bristle));
+	        g.draw(bristle);
+	    }
+
+	    g.setTransform(old);
 
 	}
 	
 	
 	public void move(Dimension panelSize) {
+		
+		if (lightOn) lightOn = false;
+		else lightOn = true;
 		
 		pos.add(speed);
 		collisionValidate(panelSize);
@@ -194,7 +305,7 @@ public class Robot {
 		}
 		reset(panelSize);//if out of bounds, reset to center
 		
-		System.out.println(pos);
+		//System.out.println(pos);
 	}
 	
 	private Rectangle2D getBounds() {
@@ -253,6 +364,9 @@ public class Robot {
 	}
 	
 	
+	public PVector getPos() {
+		return pos;
+	}
 	
 	public double getRadius() {
 		return scale * (dia / 2.0);
@@ -271,8 +385,10 @@ public class Robot {
 			if (!panelBounds.contains(getBounds())) {
 			    pos.set(panelSize.width / 2f, panelSize.height / 2f);
 			}
-
-
+	}
+	
+	boolean isLightOn() {
+		return lightOn;
 	}
 	
 	boolean approach(PVector targ) {
@@ -286,12 +402,12 @@ public class Robot {
 
 		// make a speed that points toward the target and then move
 		speed = PVector.fromAngle(angle);
-		speed.mult(2);
+		//speed.mult(2);
 
 		// check if bug reaches target
 		if (path.mag() - (scale * dia) / 2 <= 0 ) {
 			reach = true;
-			speed.mult(0.5f);
+			//speed.mult(0.5f);
 		}
 
 		return reach;

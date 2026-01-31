@@ -2,7 +2,8 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.geom.AffineTransform;
+import java.awt.Shape;
+import java.awt.geom.*;
 
 import processing.core.PVector;
 
@@ -36,13 +37,20 @@ public class Room {
 		pos = new PVector(width,  hight);
 		
 		AffineTransform af = g.getTransform();
-		g.setColor(color);
 		g.setStroke(new BasicStroke(RobotPane.stroke));
-		g.drawRect(margin, margin, width - 2*margin, hight - 2*margin);
+		Rectangle2D room = new Rectangle2D.Double(
+				margin, 
+				margin, 
+				width - 2*margin, 
+				hight - 2*margin);
+		//g.setColor(Color.BLACK);
+		//g.fill(room);
+		g.setColor(color);
+		g.draw(room);
 		//System.out.println("Room size: " + width + " x " + hight);
 		g.setTransform(af);
 
-		drawSofa(g, pos);
+		drawTable(g, pos);
 		
 		int cols = 3;
 	    int rows = 2;
@@ -74,7 +82,7 @@ public class Room {
 	}
 	
 	private void drawChair(Graphics2D g, PVector p, double rot) {
-		int w = 40;
+		/*int w = 40;
 		int iW = 30;
 		
 		g.setColor(Color.BLACK);
@@ -89,14 +97,55 @@ public class Room {
 		g.drawArc(-iW/2, -iW/2, iW, iW, 0, 180);
 		g.drawLine(-w/2, 0, -iW/2, 0);
 		g.drawLine(w/2, 0, iW/2, 0);
-		g.setTransform(af);
+		g.setTransform(af);*/
+		
+		int w = 40;
+	    int iW = 30;
+
+	    AffineTransform old = g.getTransform();
+
+	   
+	    g.translate(p.x, p.y);
+	    g.rotate(rot);
+
+	    g.setStroke(new BasicStroke(stroke));
+
+	    //round corner square
+	    RoundRectangle2D seat = new RoundRectangle2D.Double(
+	            -w/2.0, -w/2.0, w, w,
+	            w/5.0, w/5.0
+	    );
+
+	    g.setColor(Color.BLACK);
+	    g.fill(seat);
+
+	    g.setColor(color);
+	    g.draw(seat);
+
+	    //back arc
+	    Shape back = new Arc2D.Double(
+	            -iW/2.0, -iW/2.0, iW, iW,
+	            0, 180, Arc2D.OPEN
+	    );
+
+	    g.draw(back);
+
+	    //two lines
+	    Shape left = new Line2D.Double(-w/2.0, 0, -iW/2.0, 0);
+	    Shape right = new Line2D.Double(w/2.0, 0, iW/2.0, 0);
+
+	    g.draw(left);
+	    g.draw(right);
+
+	    // Restore transform
+	    g.setTransform(old);
 		
 	}
 	
-	private void drawSofa(Graphics2D g, PVector p) {
+	private void drawTable(Graphics2D g, PVector p) {
 		
 
-		int w = 230, h = 80;
+		/*int w = 230, h = 80;
 		AffineTransform af = g.getTransform();
 
 		g.setColor(Color.BLACK);
@@ -105,8 +154,32 @@ public class Room {
 		g.fillRoundRect(-w/2, -h/2, w, h, h, h);
 		g.setColor(color);
 		g.drawRoundRect(-w/2, -h/2, w, h, h, h);
-		g.setTransform(af);
+		g.setTransform(af);*/
 
+		int w = 230;
+	    int h = 80;
+
+	    AffineTransform old = g.getTransform();
+
+	    g.setColor(Color.BLACK);
+	    g.setStroke(new BasicStroke(stroke));
+
+	  
+	    g.translate(p.x / 2, p.y / 2);
+
+	    Shape sofa = new RoundRectangle2D.Double(
+	            -w / 2.0, -h / 2.0,
+	            w, h,
+	            h, h
+	    );
+
+	    g.fill(sofa);
+
+	    g.setColor(color);
+	    g.draw(sofa);
+
+	    g.setTransform(old);
+		
 	}
 	
 	
