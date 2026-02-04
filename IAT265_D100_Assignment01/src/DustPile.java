@@ -1,5 +1,6 @@
 
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
@@ -20,14 +21,14 @@ public class DustPile {
 	private Random dice = new Random();
 	private double mScale = 1.5;
 	private Blob[] blobs;
-	private ArrayList<Shape> shapes; 
+	private Area pileArea; 
 	
     
     public DustPile(Dimension dim) {
     	color = RobotPane.green;
     	r = 10;
     	scale = 1;
-    	shapes = new ArrayList<Shape>();
+    	pileArea = new Area();
 		pos = new PVector(dice.nextInt((int)(RobotPane.margin*mScale), 
 				dim.width - (int)(RobotPane.margin*mScale)),
 				dice.nextInt((int)(RobotPane.margin*mScale), 
@@ -40,7 +41,7 @@ public class DustPile {
     	color = RobotPane.green;
     	r = 10;
     	scale = 1;
-    	shapes = new ArrayList<Shape>();
+    	pileArea = new Area();
     	this.pos = pos;
     	generateCluster();
     }
@@ -51,7 +52,7 @@ public class DustPile {
     	this.scale = scale;
     	this.color = c;
 		this.pos = pos;
-    	shapes = new ArrayList<Shape>();
+    	pileArea = new Area();
 		generateCluster();
     }
     
@@ -94,20 +95,17 @@ public class DustPile {
     }
     
     public void drawDustPile(Graphics2D g) {
-
+    	//hit-testing, clear it each draw
+        pileArea.reset();
+        
         AffineTransform old = g.getTransform();
 
         g.setColor(color);
 
         //transform 
         AffineTransform tf = new AffineTransform();
-        
         tf.translate(pos.x, pos.y);
         tf.scale(scale, scale);
-
-        //hit-testing, clear it each draw
-        shapes.clear();
-
         g.transform(tf);
 
         for (Blob b : blobs) {
@@ -117,36 +115,43 @@ public class DustPile {
             double h = b.h;
             double angle = b.angle;
 
-            //AffineTransform perBlob = new AffineTransform(tf);
+            Shape localpile = new Ellipse2D.Double(x, y, w, h);
             // rotate around the blob center
-            g.rotate(angle, b.ox, b.oy);
-            //g.setTransform(perBlob);
-            Ellipse2D local = new Ellipse2D.Double(x, y, w, h);
-            g.fill(local);
-            
-            // translate local coord to world coord for hit-testing
-            Shape world = tf.createTransformedShape(local);
-            shapes.add(world);
-            g.rotate(-b.angle, b.ox, b.oy); //undo rotation
-        }
+            AffineTransform blobTx = new AffineTransform();
+            blobTx.rotate(b.angle, b.ox, b.oy);
 
+            Shape rotatedBlob = blobTx.createTransformedShape(localpile);
+            
+            pileArea.add(new Area(rotatedBlob));
+            g.fill(rotatedBlob);
+        }
+        
+        g.setColor(RobotPane.amber);
         g.setTransform(old);
+        g.setStroke(new BasicStroke(2f)); 
+        g.draw(getBoundary());
+        g.setStroke(new BasicStroke(3f)); 
+        g.draw(getBoundary().getBounds2D());
+
+
     }
 
     
     public boolean checkMouseHit(MouseEvent e) {
     	//System.out.println("Mouse at " + e.getX() + ", " + e.getY());
     	//System.out.println(getBound().contains(e.getX(), e.getY()));
-	    return  getBound().contains(e.getX(), e.getY());
+	    return  getBoundary().getBounds2D().contains(e.getX(), e.getY());
 	}
     
-    private Shape getBound() {
-    	Area area = new Area();
-    	for (Shape s : shapes) area.add(new Area(s));
-    	//System.out.println("Area " + area.getBounds2D());
-    	return area.getBounds2D();
+    public Shape getBoundary() {
+		AffineTransform at = new AffineTransform();
+		at.translate(pos.x, pos.y);
+		at.scale(scale, scale);
+		return at.createTransformedShape(pileArea);
+	}
+    
+    
 
-    }
     
     public PVector getPos() {
 		return pos;

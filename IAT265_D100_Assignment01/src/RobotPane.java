@@ -73,7 +73,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	    
 	    if (piles != null) for (DustPile dust : piles) {
 		    dust.drawDustPile(g2);
-		    System.out.println("dust drawn");
+		    //System.out.println("dust drawn");
 	    }
 	    
 	    if (robots != null) {
@@ -116,7 +116,7 @@ public class RobotPane extends JPanel implements ActionListener{
 		if (!piles.isEmpty()) {
 			DustPile targ = targetAquisition();
 			for (Robot robot : robots) {
-				if (robot.approach(targ.getPos())) {
+				if (robot.approach(targ)) {
 					piles.remove(targ);
 					count++;
 				}
@@ -177,7 +177,7 @@ public class RobotPane extends JPanel implements ActionListener{
 
 	    g2.setColor(green);
 	    //g2.setFont(g2.getFont().deriveFont(48f));
-	    g2.setFont(new Font("Monospaced", Font.PLAIN, 32));
+	    g2.setFont(new Font("Monospaced", Font.BOLD, 32));
 	    FontMetrics fm = g2.getFontMetrics();
 
 	    int textW = fm.stringWidth(text);
