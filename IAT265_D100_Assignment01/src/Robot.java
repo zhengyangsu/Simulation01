@@ -40,21 +40,12 @@ public class Robot {
 		dia = 70;
 		disp = 1;
 		scale = 0.7;
-		//dir = 1;
 		pos = new PVector(dim.width - 3 * RobotPane.margin,  3 * RobotPane.margin);
-		//speed = new PVector(dice.nextInt(1, disp), dice.nextInt(1, disp));
 		speed = new PVector(disp,0);
 		theta = Math.toRadians(90);
 		lightOn = false;
 		robotArea = new Area();
 		timer =0;
-		//left   = pos.x - scale*(dia/2);
-	    //right  = (int)pos.x + scale*(dia/2);
-	    //top    = (int)pos.y - scale*(dia/2);
-	    //bottom = (int)pos.y + scale*(dia/2);
-	    
-	   
-		
 		color = RobotPane.green;
 	}
 	
