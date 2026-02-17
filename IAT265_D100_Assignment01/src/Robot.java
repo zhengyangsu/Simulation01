@@ -3,10 +3,11 @@
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.*;
-//import java.util.Random;
+import java.util.Random;
 
 import processing.core.PVector;
 
@@ -15,12 +16,14 @@ public class Robot {
 	
 	//properties fields
 	
-	
+	private int width;
+	private int height;
     private PVector pos, speed;
+    private float speedLimit;
     private int dia;
 	private int disp;
 	private Color color;
-	//private Random dice = new Random();
+	private Random dice = new Random();
 	private double scale;
 	//private double left;
     //private double right;
@@ -32,35 +35,86 @@ public class Robot {
     private boolean lightOn;
     private Area robotArea;
     private int timer;
+    private DustPile target;
     
-	
+	private Arc2D.Double fov; //field-of-view
+	private float sight;
+	private Shape outer;
+	private Shape inner;
+	private Shape button;
+	private Shape panelArc;
+	private Shape panelLineL;
+	private Shape panelLineR;
+	private Path2D face;
+	private Shape eye;
+	private Shape browL;
+	private Shape browR;
 	
 	//constructor
 	public Robot(Dimension dim) {
 		dia = 70;
 		disp = 1;
-		scale = 0.7;
-		pos = new PVector(dim.width - 3 * RobotPane.margin,  3 * RobotPane.margin);
+		scale = dice.nextDouble(0.6, 1);
+		speedLimit = 2;
+		this.width = dim.width;
+		this.height = dim.height;
+		float x = (float)dice.nextDouble(RobotPane.margin + dia, dim.width - RobotPane.margin - dia);
+		float y = (float)dice.nextDouble(RobotPane.margin + dia, dim.height - RobotPane.margin - dia);
+
+		pos = new PVector(x , y);
+
 		speed = new PVector(disp,0);
+		speed.limit(speedLimit);
+		
 		theta = Math.toRadians(90);
 		lightOn = false;
 		robotArea = new Area();
 		timer =0;
 		color = RobotPane.green;
+		target = null;
 	}
 	
-	//overloading
-	/*public Robot(int x, int y, int size, Color c, int xSpeed, int ySpeed) {
-		this.pos = new PVector(x, y);
-		this.speed = new PVector(xSpeed, ySpeed);
-		this.dia = size;
-		color = c;
-		
-	}*/
 
+	private void setShapes() {
+		float sCof = 0.15f;
+		sight = width * speedLimit * sCof;
+		
+		//body shapes (local coords)
+		// outer circle
+		outer = new Ellipse2D.Double(-dia / 2.0, -dia / 2.0, dia, dia);
+		
+		double d1 = dia * 4.0 / 5.0;
+		inner = new Ellipse2D.Double(-d1 / 2.0, -d1 / 2.0, d1, d1);
+		
+		double d2 = dia * 1.0 / 10.0;
+		button = new Ellipse2D.Double(-d2 / 2.0, d2 + 5, d2, d2);
+		
+		// power panel (arc + two lines)
+		double d3 = dia / 4.0;
+		panelArc = new Arc2D.Double(-d3 / 2.0, d3 - 10, d3, d3, 0, 180, Arc2D.OPEN);
+		panelLineL = new Line2D.Double(-d3 / 2.0, d3, -d3 / 2.0, 33);
+		panelLineR = new Line2D.Double(-d3 / 2.0 + d3, d3, -d3 / 2.0 + d3, 33);
+		
+		//face
+		face = new Path2D.Double();
+		face.moveTo(-15, -23);
+		face.lineTo(-15, -15);
+		face.quadTo(-15, -10, -10, -10);
+		face.lineTo(10, -10);
+		face.quadTo(15, -10, 15, -15);
+		face.lineTo(15, -23);
+		
+		// eyes + brows
+		eye = new RoundRectangle2D.Double(-3 / 2.0, -20, 3, 4, 2, 2);
+		browL = new Line2D.Double(-10, -18, -7, -18);
+		browR = new Line2D.Double(10, -18, 7, -18);
+		
+		
+		fov = new Arc2D.Double(-sight, -sight, sight*2, sight*2, 45, 90, Arc2D.PIE);
+	}
 	
 	public void drawRobot(Graphics2D g) {
-		 
+		setShapes(); 
 		robotArea.reset();
 
 		AffineTransform af = g.getTransform();
@@ -73,32 +127,27 @@ public class Robot {
 		g.rotate(theta);
 		g.rotate(speed.heading());
 		g.scale(scale, scale);
-		
 		if (speed.x < 0) {
 		    g.scale(-1, 1); // flip
 		}
 		
+		// brushes
 		drawBrushes(g, 1);
 		drawBrushes(g, -1);
 
-		//body shapes (local coords)
-		
 		// outer circle
-		Shape outer = new Ellipse2D.Double(-dia / 2.0, -dia / 2.0, dia, dia);
 		g.setColor(Color.BLACK);
 		g.fill(outer);
 		g.setColor(color);
 		g.draw(outer);
 		
-
+		//fov
+		g.draw(fov);
+		
 		// inner circle
-		double d = dia * 4.0 / 5.0;
-		Shape inner = new Ellipse2D.Double(-d / 2.0, -d / 2.0, d, d);
 		g.draw(inner);
 		
 		// button circle
-		d = dia * 1.0 / 10.0;
-		Shape button = new Ellipse2D.Double(-d / 2.0, d + 5, d, d);
 		if (lightOn && timer > 24) {
 			g.setColor(color);
 		    g.fill(button);
@@ -114,43 +163,33 @@ public class Robot {
 		
 		// power panel (arc + two lines)
 		g.setColor(color);
-		d = dia / 4.0;
-		Shape panelArc = new Arc2D.Double(-d / 2.0, d - 10, d, d, 0, 180, Arc2D.OPEN);
-		Shape panelLineL = new Line2D.Double(-d / 2.0, d, -d / 2.0, 33);
-		Shape panelLineR = new Line2D.Double(-d / 2.0 + d, d, -d / 2.0 + d, 33);
-		
 		g.draw(panelArc);
 		g.draw(panelLineL);
 		g.draw(panelLineR);
 		
-		//face
-		Path2D face = new Path2D.Double();
-		face.moveTo(-15, -23);
-		face.lineTo(-15, -15);
-		face.quadTo(-15, -10, -10, -10);
-		face.lineTo(10, -10);
-		face.quadTo(15, -10, 15, -15);
-		face.lineTo(15, -23);
+		// face
 		g.draw(face);
 
-
 		// eyes + brows
-		Shape eye = new RoundRectangle2D.Double(-3 / 2.0, -20, 3, 4, 2, 2);
-		Shape browL = new Line2D.Double(-10, -18, -7, -18);
-		Shape browR = new Line2D.Double(10, -18, 7, -18);
-		
 		g.draw(eye);
 		g.draw(browL);
 		g.draw(browR);
 		
+		//robot area outline
 		g.setColor(RobotPane.amber);
 		robotArea.add(new Area(outer));
-		 
-		
 		g.draw(robotArea);
-		g.setTransform(af);
-		
+		g.setTransform(af);//reset for bounding box
 		g.draw(getBoundary().getBounds2D());
+		
+		g.draw(getFOV());
+		
+		// Display scale
+		g.setColor(Color.WHITE);
+	    g.setFont(new Font("Monospaced", Font.BOLD, 24));
+	    String text = String.format("%.2f", scale);;
+	    g.drawString(text, pos.x, pos.y);
+		
 	}
 	
 
@@ -271,15 +310,50 @@ public class Robot {
 	    if (bnd.intersects(bottom) && speed.y > 0) speed.y *= -1;
 	}
 	
-	
-	public PVector getPos() {
-		return pos;
+	boolean approach(PVector f) {
+		
+		boolean reach = false;
+		
+		if (target!=null) {
+			// calculate the path to target point
+			PVector path = PVector.sub(target.getPos(), pos);
+
+			// returns the direction as angle
+			float angle = path.heading();
+
+			// make a speed that points toward the target and then move
+			speed = PVector.fromAngle(angle);
+
+			// check if bug reaches target
+			if (collides(target) && path.mag() - (scale * dia) / 2 <= 0 ) {
+				reach = true;
+				System.out.println("Reached target at " + target.getPos());
+				//speed.mult(0.5f);
+			}
+		}
+		
+		//Steering along the wall
+		PVector wallSteerAccel = f.div((float)scale);
+		float speedValue = speed.mag();
+		speed.add(wallSteerAccel);
+		speed.normalize().mult(speedValue);
+		pos.add(speed);
+		
+		return reach;
 	}
 	
-	public double getRadius() {
-		return scale * (dia / 2.0);
+	public Shape getFOV() {
+		AffineTransform at = new AffineTransform();
+		
+		at.translate(pos.x, pos.y);
+		at.rotate(theta);
+		at.rotate(speed.heading());
+		at.scale(scale, scale);
+		if (speed.x < 0) {
+		    at.scale(-1, 1); // flip
+		}
+		return at.createTransformedShape(fov);
 	}
-	
 	
 	private void reset(Dimension panelSize) {
 		Rectangle2D panelBounds =
@@ -299,29 +373,38 @@ public class Robot {
 		return lightOn;
 	}
 	
-	boolean approach(DustPile targ) {
-		
-		boolean reach = false;
-		
-		// calculate the path to target point
-		PVector path = PVector.sub(targ.getPos(), pos);
-
-		// returns the direction as angle
-		float angle = path.heading();
-
-		// make a speed that points toward the target and then move
-		speed = PVector.fromAngle(angle);
-		//speed.mult(2);
-
-		// check if bug reaches target
-		if (collides(targ) && path.mag() - (scale * dia) / 2 <= 0 ) {
-			reach = true;
-			System.out.println("Reached target at " + targ.getPos());
-			//speed.mult(0.5f);
-		}
-
-		return reach;
+	
+	
+	
+	
+	//getter, setter
+	
+	public PVector getPos() {
+		return pos;
 	}
+	
+	public double getRadius() {
+		return scale * (dia / 2.0);
+	}
+	
+	public double getScale() {
+		return scale;
+	}
+	
+	public int getDia() {
+		return dia;
+	}
+	
+	public void setTarget(DustPile target) {
+		this.target = target;
+	}
+	
+	public DustPile getTarget() {
+		return target;
+	}
+	
+	
+	
 	
 	
 	

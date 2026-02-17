@@ -3,6 +3,7 @@
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.event.MouseEvent;
@@ -27,7 +28,7 @@ public class DustPile {
     public DustPile(Dimension dim) {
     	color = RobotPane.green;
     	r = 10;
-    	scale = 1;
+    	scale = dice.nextDouble(0.4, 1);
     	pileArea = new Area();
 		pos = new PVector(dice.nextInt((int)(RobotPane.margin*mScale), 
 				dim.width - (int)(RobotPane.margin*mScale)),
@@ -40,7 +41,7 @@ public class DustPile {
     public DustPile(PVector pos) {
     	color = RobotPane.green;
     	r = 10;
-    	scale = 1;
+    	scale = dice.nextDouble(0.1, 0.9);
     	pileArea = new Area();
     	this.pos = pos;
     	generateCluster();
@@ -128,10 +129,17 @@ public class DustPile {
         
         g.setColor(RobotPane.amber);
         g.setTransform(old);
-        g.setStroke(new BasicStroke(2f)); 
-        g.draw(getBoundary());
-        g.setStroke(new BasicStroke(3f)); 
-        g.draw(getBoundary().getBounds2D());
+        
+        //Draw bounds
+        //g.setStroke(new BasicStroke(2f)); 
+        //g.draw(getBoundary());
+        //g.setStroke(new BasicStroke(3f)); 
+        //g.draw(getBoundary().getBounds2D());
+        
+        g.setColor(Color.WHITE);
+	    g.setFont(new Font("Monospaced", Font.BOLD, 24));
+	    String text = String.format("%.2f", scale);;
+	    g.drawString(text, pos.x, pos.y);
 
 
     }
@@ -150,7 +158,9 @@ public class DustPile {
 		return at.createTransformedShape(pileArea);
 	}
     
-    
+    public double getScale() {
+    	return scale;
+    }
 
     
     public PVector getPos() {

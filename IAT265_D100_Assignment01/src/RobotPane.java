@@ -23,22 +23,15 @@ import processing.core.PVector;
 @SuppressWarnings("serial")
 public class RobotPane extends JPanel implements ActionListener{
 	
-	public final static int paneWidth = 800;
-	public final static int paneHight = 600;
-	public final static int margin = 40;
-	
-
-
-	
+	public final static int paneWidth = 1200;
+	public final static int paneHight = 800;
+	public final static int margin = 50;
 	public final static Color green = new Color(0, 255, 65);
 	public final static Color amber = new Color(255, 140, 0);
 	public static float stroke = 2;
-	
 	private int width = paneWidth - 2* margin - (int)stroke;
 	private int hight = paneHight - 2* margin - (int)stroke;
 	private static int count = 0;
-	
-	
 	private int robotCount;
 	private int pileCount;
 	private ArrayList<Robot> robots;
@@ -55,9 +48,9 @@ public class RobotPane extends JPanel implements ActionListener{
 		this.setBackground(Color.BLACK);
 		this.addMouseListener(new MyMouseAdapter());
 		
-		pileCount = 0;
-		robotCount = 0;
-		
+		robotCount = 2;
+		pileCount = robotCount*2;
+
 				
 	}
 	
@@ -94,40 +87,28 @@ public class RobotPane extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent arg0) {
 		// TODO Auto-generated method stub
 		
-		if (robots != null) {
-			for (Robot robot : robots) {
-				robot.move(getSize());
+		if (robots != null && piles != null) targetAquisition();
+
+		for (Robot r : robots) {
+			PVector f = room.wallPushForce(r);
+			if (r.approach(f)) {
+				
+				DustPile t = r.getTarget();
+				piles.remove(t);
+				r.setTarget(null);
+				
+				piles.add(new DustPile(getSize()));
+				count++;
+			}
+		}
+		
+		if (!robots.isEmpty()) {
+			for (Robot r : robots) {
+				r.move(getSize());
 				//System.out.println("robot moved");
 			}
 			
 		}
-		//Rectangle2D rBound = robot.getBounds();
-        //robot.collisionValidate(getSize());
-		
-        //System.out.println(pileTimer);
-        
-		/*if (pileTimer < fps*5) // increase only when it's less than 5 seconds. given 24 FPS
-			pileTimer++;
-		else {
-			pileTimer = 0;
-			if (piles == null) piles = new DustPile(getSize()); // produce a pile every 5 seconds
-		}*/
-		
-		if (!piles.isEmpty()) {
-			DustPile targ = targetAquisition();
-			for (Robot robot : robots) {
-				if (robot.approach(targ)) {
-					piles.remove(targ);
-					count++;
-				}
-		
-				
-			}
-		}
-		
-
-        
-
 		repaint();
 	}
 	
@@ -138,6 +119,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	    public void mouseClicked(MouseEvent e) {
 	    	
 	        //System.out.println(e.toString());
+	    	
 	    	if (e.getClickCount() == 2) {
 	    		PVector pos = new PVector(e.getX(), e.getY());
 		        piles.add(new DustPile(pos));
@@ -146,11 +128,11 @@ public class RobotPane extends JPanel implements ActionListener{
 		    	if (e.isControlDown() && pile.checkMouseHit(e)) {
 		    		System.out.println("enlarged");
 		    		pile.enlarge();
-	        }
+		    	}	
 	    		
-	    	}
-	        //System.out.println("Pile added in " + pos);
-	        repaint();//have to repaint to show new pile modification
+	        }
+	    //System.out.println("Pile added in " + pos);
+	    repaint();//have to repaint to show new pile modification
 	
 	    }
 	}
@@ -161,8 +143,9 @@ public class RobotPane extends JPanel implements ActionListener{
 		
 		
 		piles = new ArrayList<DustPile>();
+		for (int i = 0; i < pileCount; i++) piles.add(new DustPile(getSize()));
 		robots = new ArrayList<Robot>();
-		robots.add(new Robot(getSize()));
+		for (int i = 0; i < robotCount; i++) robots.add(new Robot(getSize()));
 		room = new Room(getSize());
 		//pileTimer = 0;
 		t = new Timer(1000/fps, this);
@@ -171,7 +154,36 @@ public class RobotPane extends JPanel implements ActionListener{
 	}
 	
 	
-	//helper
+	
+	
+	
+	//pass the designated pile to the corresponding robot
+	private void targetAquisition() {
+		//find the closest dust pile
+		
+		for (Robot r: robots) {
+			
+			DustPile target = null;
+			double minDist = Double.MAX_VALUE;
+			
+			for (DustPile p : piles) {
+				
+				if (p.getScale() <= r.getScale()) {
+					
+					double dist = PVector.dist(r.getPos(), p.getPos());
+					
+					if (dist < minDist) {
+						minDist = dist;
+						target = p;
+					}
+				}
+			}
+			r.setTarget(target);
+		}
+	}
+	
+	
+	//helpers
 	private void drawCounter(Graphics2D g2) {
 		String text = "" + count;
 
@@ -191,20 +203,6 @@ public class RobotPane extends JPanel implements ActionListener{
 	    int y = cy + (ascent - descent) / 2;//center text vertically
 
 	    g2.drawString(text, x, y);
-	}
-	
-	private DustPile targetAquisition() {
-		//find the closest dust pile
-		DustPile target = null;
-		double minDist = Double.MAX_VALUE;
-		for (DustPile pile : piles) {
-			double dist = PVector.dist(robots.get(0).getPos(), pile.getPos());
-			if (dist < minDist) {
-				minDist = dist;
-				target = pile;
-			}
-		}
-		return target;
 	}
 	
 }

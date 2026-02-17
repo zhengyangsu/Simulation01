@@ -9,23 +9,44 @@ import processing.core.PVector;
 
 public class Room {
 
-	private int hight;
+	private int height;
 	private int width;
 	private int margin;
 	private float stroke;
 	private Color color;
 	private PVector pos;
 	
+	/*
+	private Rectangle2D.Double rightWall;
+	private Rectangle2D.Double leftWall;
+	private Rectangle2D.Double topWall;
+	private Rectangle2D.Double bottomWall;
+	*/
+	
+	private Line2D.Double rightEdge;
+	private Line2D.Double leftEdge;
+	private Line2D.Double topEdge;
+	private Line2D.Double bottomEdge;
+	private float wallCoef;
+	
 	public Room(Dimension dim) {
 		margin = RobotPane.margin;
 		stroke = RobotPane.stroke;
-		this.hight = dim.height;
+		this.height = dim.height;
 		this.width = dim.width;
 		color = RobotPane.green;
+		
+		rightEdge = new Line2D.Double(width-margin, margin, width-margin, height - margin);
+		leftEdge = new Line2D.Double(margin, margin, margin, height - margin);
+		topEdge = new Line2D.Double(margin, margin, width - margin, margin);
+		bottomEdge = new Line2D.Double(margin, height - margin, width - margin, height - margin);
+		wallCoef = 50.0f;
+		
 	}
 	
+	//overloading
 	public Room(int hight, int width, int margin){
-		this.hight = hight;
+		this.height = hight;
 		this.width = width;
 		this.margin = margin;
 
@@ -33,24 +54,33 @@ public class Room {
 	
 	public void drawRoom(Graphics2D g, Dimension dim) {
 		this.width = dim.width;
-	    this.hight = dim.height;
-		pos = new PVector(width,  hight);
+	    this.height = dim.height;
+		pos = new PVector(width,  height);
 		
 		AffineTransform af = g.getTransform();
 		g.setStroke(new BasicStroke(RobotPane.stroke));
+		
 		Rectangle2D room = new Rectangle2D.Double(
 				margin, 
 				margin, 
 				width - 2*margin, 
-				hight - 2*margin);
+				height - 2*margin);
+		
+		
+		
 		//g.setColor(Color.BLACK);
 		//g.fill(room);
 		g.setColor(color);
-		g.draw(room);
+		//g.draw(room);
+		g.draw(leftEdge);
+		g.draw(rightEdge);
+		g.draw(topEdge);
+		g.draw(bottomEdge);
+		
 		//System.out.println("Room size: " + width + " x " + hight);
 		g.setTransform(af);
 
-		drawTable(g, pos);
+		//drawTable(g, pos);
 		
 		int cols = 3;
 	    int rows = 2;
@@ -64,8 +94,9 @@ public class Room {
 
 	    // starting point top-left chair 
 	    float startX = width / 2f - spacingX;   // centers 3 chairs
-	    float startY = hight / 2f - spacingY/2; // centers 2 rows
+	    float startY = height / 2f - spacingY/2; // centers 2 rows
 
+	    /*
 	    for (int r = 0; r < rows; r++) {
 	        for (int c = 0; c < cols; c++) {
 	            float x = startX + c * spacingX;
@@ -76,28 +107,12 @@ public class Room {
 	            drawChair(g, new PVector(x, y), rot);
 	        }
 	    }
+	    */
 		
-		//drawChair(g, pos);
 
 	}
 	
 	private void drawChair(Graphics2D g, PVector p, double rot) {
-		/*int w = 40;
-		int iW = 30;
-		
-		g.setColor(Color.BLACK);
-		g.setStroke(new BasicStroke(stroke));
-		
-		AffineTransform af = g.getTransform();
-		g.translate(p.x, p.y);
-		g.rotate(rot);
-		g.fillRoundRect(-w/2, -w/2, w, w, w/5, w/5);
-		g.setColor(color);
-		g.drawRoundRect(-w/2, -w/2, w, w, w/5, w/5);
-		g.drawArc(-iW/2, -iW/2, iW, iW, 0, 180);
-		g.drawLine(-w/2, 0, -iW/2, 0);
-		g.drawLine(w/2, 0, iW/2, 0);
-		g.setTransform(af);*/
 		
 		int w = 40;
 	    int iW = 30;
@@ -143,18 +158,6 @@ public class Room {
 	}
 	
 	private void drawTable(Graphics2D g, PVector p) {
-		
-
-		/*int w = 230, h = 80;
-		AffineTransform af = g.getTransform();
-
-		g.setColor(Color.BLACK);
-		g.setStroke(new BasicStroke(stroke));
-		g.translate(pos.x/2, pos.y/2);
-		g.fillRoundRect(-w/2, -h/2, w, h, h, h);
-		g.setColor(color);
-		g.drawRoundRect(-w/2, -h/2, w, h, h, h);
-		g.setTransform(af);*/
 
 		int w = 230;
 	    int h = 80;
@@ -182,5 +185,22 @@ public class Room {
 		
 	}
 	
-	
+	public PVector wallPushForce(Robot r) {
+		PVector force = new PVector();
+		Double distance = 0.0;
+		
+		distance = rightEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
+		force.add(new PVector((float)(-wallCoef / Math.pow(distance, 2)), 0.0f));
+		
+		distance = leftEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
+		force.add(new PVector((float)(+wallCoef / Math.pow(distance, 2)), 0.0f));
+		
+		distance = topEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
+		force.add(new PVector((float)(+wallCoef / Math.pow(distance, 2)), 0.0f));
+		
+		distance = bottomEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
+		force.add(new PVector((float)(-wallCoef / Math.pow(distance, 2)), 0.0f));
+		
+		return force;
+	}
 }
