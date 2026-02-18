@@ -22,12 +22,13 @@ public class Room {
 	private Rectangle2D.Double topWall;
 	private Rectangle2D.Double bottomWall;
 	*/
-	
+	private Rectangle2D room;
 	private Line2D.Double rightEdge;
 	private Line2D.Double leftEdge;
 	private Line2D.Double topEdge;
 	private Line2D.Double bottomEdge;
 	private float wallCoef;
+	
 	
 	public Room(Dimension dim) {
 		margin = RobotPane.margin;
@@ -36,11 +37,8 @@ public class Room {
 		this.width = dim.width;
 		color = RobotPane.green;
 		
-		rightEdge = new Line2D.Double(width-margin, margin, width-margin, height - margin);
-		leftEdge = new Line2D.Double(margin, margin, margin, height - margin);
-		topEdge = new Line2D.Double(margin, margin, width - margin, margin);
-		bottomEdge = new Line2D.Double(margin, height - margin, width - margin, height - margin);
-		wallCoef = 50.0f;
+		
+		wallCoef = 25.0f;
 		
 	}
 	
@@ -52,6 +50,7 @@ public class Room {
 
 	}
 	
+	
 	public void drawRoom(Graphics2D g, Dimension dim) {
 		this.width = dim.width;
 	    this.height = dim.height;
@@ -60,18 +59,21 @@ public class Room {
 		AffineTransform af = g.getTransform();
 		g.setStroke(new BasicStroke(RobotPane.stroke));
 		
-		Rectangle2D room = new Rectangle2D.Double(
+		room = new Rectangle2D.Double(
 				margin, 
 				margin, 
 				width - 2*margin, 
 				height - 2*margin);
 		
-		
+		rightEdge = new Line2D.Double(width-margin, margin, width-margin, height - margin);
+		leftEdge = new Line2D.Double(margin, margin, margin, height - margin);
+		topEdge = new Line2D.Double(margin, margin, width - margin, margin);
+		bottomEdge = new Line2D.Double(margin, height - margin, width - margin, height - margin);
 		
 		//g.setColor(Color.BLACK);
 		//g.fill(room);
 		g.setColor(color);
-		//g.draw(room);
+		g.draw(room);
 		g.draw(leftEdge);
 		g.draw(rightEdge);
 		g.draw(topEdge);
@@ -80,7 +82,7 @@ public class Room {
 		//System.out.println("Room size: " + width + " x " + hight);
 		g.setTransform(af);
 
-		//drawTable(g, pos);
+		drawTable(g, pos);
 		
 		int cols = 3;
 	    int rows = 2;
@@ -96,7 +98,7 @@ public class Room {
 	    float startX = width / 2f - spacingX;   // centers 3 chairs
 	    float startY = height / 2f - spacingY/2; // centers 2 rows
 
-	    /*
+	    
 	    for (int r = 0; r < rows; r++) {
 	        for (int c = 0; c < cols; c++) {
 	            float x = startX + c * spacingX;
@@ -107,9 +109,13 @@ public class Room {
 	            drawChair(g, new PVector(x, y), rot);
 	        }
 	    }
-	    */
+	    
 		
 
+	}
+	
+	public Shape getBound() {
+		return room.getBounds();
 	}
 	
 	private void drawChair(Graphics2D g, PVector p, double rot) {
@@ -186,21 +192,82 @@ public class Room {
 	}
 	
 	public PVector wallPushForce(Robot r) {
-		PVector force = new PVector();
-		Double distance = 0.0;
 		
+		
+		PVector force = new PVector();
+		float radius = (float)(r.getDia() * r.getScale() / 2f);
+	    float x = r.getPos().x;
+	    float y = r.getPos().y;
+		
+	    float minDist = r.getDia() * 1.5f;      // how far robot senses wall
+	    float safe = 6f;         // prevents infinite force
+
+
+	    //force = wallCoef / d
+	    // RIGHT
+	    float d = (width - margin) - x - radius;
+	    if (d < minDist)
+	        force.x -= wallCoef / Math.max(d, safe);
+
+	    // LEFT
+	    d = x - margin - radius;
+	    if (d < minDist)
+	        force.x += wallCoef / Math.max(d, safe);
+
+	    // TOP
+	    d = y - margin - radius;
+	    if (d < minDist)
+	        force.y += wallCoef / Math.max(d, safe);
+
+	    // BOTTOM
+	    d = (height - margin) - y - radius;
+	    if (d < minDist)
+	        force.y -= wallCoef / Math.max(d, safe);
+	    
+	    /*
+	     * Double distance = 0.0;
+	    float d = (width - margin) - x - radius;
 		distance = rightEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
 		force.add(new PVector((float)(-wallCoef / Math.pow(distance, 2)), 0.0f));
 		
+	    d = x - margin - radius;
 		distance = leftEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
 		force.add(new PVector((float)(+wallCoef / Math.pow(distance, 2)), 0.0f));
 		
+		d = y - margin - radius;
 		distance = topEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
 		force.add(new PVector((float)(+wallCoef / Math.pow(distance, 2)), 0.0f));
 		
+		d = y - margin - radius;
 		distance = bottomEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
 		force.add(new PVector((float)(-wallCoef / Math.pow(distance, 2)), 0.0f));
 		
-		return force;
+	    
+	    float minDist = r.getDia() * 1.5f;      // how far robot senses wall
+	    float safe = 6f;         // prevents infinite force
+	    float maxForce = 0.4f;   // caps acceleration
+
+	    //force = wallCoef / d
+	    // RIGHT
+	    float d = (width - margin) - x - radius;
+	    if (d < minDist)
+	        force.x -= Math.min(maxForce, wallCoef / Math.max(d, safe));
+
+	    // LEFT
+	    d = x - margin - radius;
+	    if (d < minDist)
+	        force.x += Math.min(maxForce, wallCoef / Math.max(d, safe));
+
+	    // TOP
+	    d = y - margin - radius;
+	    if (d < minDist)
+	        force.y += Math.min(maxForce, wallCoef / Math.max(d, safe));
+
+	    // BOTTOM
+	    d = (height - margin) - y - radius;
+	    if (d < minDist)
+	        force.y -= Math.min(maxForce, wallCoef / Math.max(d, safe));
+		*/
+	    return force;
 	}
 }

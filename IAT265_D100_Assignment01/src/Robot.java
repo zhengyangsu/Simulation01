@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.*;
+import java.util.ArrayList;
 import java.util.Random;
 
 import processing.core.PVector;
@@ -19,9 +20,10 @@ public class Robot {
 	private int width;
 	private int height;
     private PVector pos, speed;
-    private float speedLimit;
+    private float maxSpeed;
     private int dia;
-	private int disp;
+	private int id;
+	private int targetId;
 	private Color color;
 	private Random dice = new Random();
 	private double scale;
@@ -33,10 +35,16 @@ public class Robot {
     private double brushAngle = 0;
     private double brushSpeed = 0.25; // radians per frame
     private boolean lightOn;
+    private boolean hunt;
+    private boolean seen;
+    private boolean reTarget;
+    private boolean displayInfo;
+    private int collectCount;
+    private int timerHunt;
     private Area robotArea;
-    private int timer;
-    private DustPile target;
-    
+    private int timerLight;
+    private DustPile currentTarget;
+    private ArrayList<DustPile> targets;
 	private Arc2D.Double fov; //field-of-view
 	private float sight;
 	private Shape outer;
@@ -51,11 +59,11 @@ public class Robot {
 	private Shape browR;
 	
 	//constructor
-	public Robot(Dimension dim) {
+	public Robot(Dimension dim, int id) {
+		this.id = id;
 		dia = 70;
-		disp = 1;
 		scale = dice.nextDouble(0.6, 1);
-		speedLimit = 2;
+		maxSpeed = 2;
 		this.width = dim.width;
 		this.height = dim.height;
 		float x = (float)dice.nextDouble(RobotPane.margin + dia, dim.width - RobotPane.margin - dia);
@@ -63,21 +71,24 @@ public class Robot {
 
 		pos = new PVector(x , y);
 
-		speed = new PVector(disp,0);
-		speed.limit(speedLimit);
+		speed = new PVector(dice.nextInt(1, 10), dice.nextInt(1, 10));
+		speed.limit(maxSpeed);
 		
 		theta = Math.toRadians(90);
 		lightOn = false;
 		robotArea = new Area();
-		timer =0;
+		timerLight =0;
 		color = RobotPane.green;
-		target = null;
+		currentTarget = null;
+		hunt = true;
+		reTarget = false;
+		collectCount = 0;
 	}
 	
 
 	private void setShapes() {
 		float sCof = 0.15f;
-		sight = width * speedLimit * sCof;
+		sight = width * maxSpeed/2 * sCof;
 		
 		//body shapes (local coords)
 		// outer circle
@@ -142,20 +153,20 @@ public class Robot {
 		g.draw(outer);
 		
 		//fov
-		g.draw(fov);
+		//g.draw(fov);
 		
 		// inner circle
 		g.draw(inner);
 		
 		// button circle
-		if (lightOn && timer > 24) {
+		if (lightOn && timerLight > 24) {
 			g.setColor(color);
 		    g.fill(button);
-		    timer = 0;
+		    timerLight = 0;
 		} else {
 		    g.setColor(Color.BLACK);
 		    g.fill(button);
-		    timer++;
+		    timerLight++;
 		}
 		
 		//g.setColor(color);
@@ -178,18 +189,43 @@ public class Robot {
 		//robot area outline
 		g.setColor(RobotPane.amber);
 		robotArea.add(new Area(outer));
-		g.draw(robotArea);
+		if (displayInfo) g.draw(robotArea);
 		g.setTransform(af);//reset for bounding box
-		g.draw(getBoundary().getBounds2D());
 		
-		g.draw(getFOV());
+		if (displayInfo) {
+			g.draw(getBoundary().getBounds2D());
+			g.draw(getFOV());
+		}
 		
-		// Display scale
-		g.setColor(Color.WHITE);
-	    g.setFont(new Font("Monospaced", Font.BOLD, 24));
-	    String text = String.format("%.2f", scale);;
-	    g.drawString(text, pos.x, pos.y);
 		
+		
+	    
+	    if (displayInfo) {
+	    	// Display scale
+			g.setColor(Color.WHITE);
+		    g.setFont(new Font("Monospaced", Font.BOLD, 16));
+		    String txtScale = "Scale " + String.format("%.2f", scale);
+		    String txtSpeed = "Speed "+ String.format("%.2f", speed.mag());
+		    String txtID = "ID " + id;
+		    String txtHunt = "Hunt " + hunt;
+		    String txtSeen = "Seen " + seen;
+		    if (currentTarget != null) targetId = currentTarget.getId();
+		    String txtTargetId = "target " + targetId;
+		    String txtReTarget = "reTarget " + reTarget;
+		    String txtCollect = "collect " + collectCount;
+		    
+	    	g.drawString(txtScale, pos.x, pos.y);
+		    g.drawString(txtSpeed, pos.x, pos.y+15);
+		    g.drawString(txtID, pos.x, pos.y+30);
+		    g.drawString(txtHunt, pos.x, pos.y+45);
+		    g.drawString(txtSeen, pos.x, pos.y+60);
+		    g.drawString(txtTargetId, pos.x, pos.y+75);
+		    g.drawString(txtReTarget, pos.x, pos.y+90);
+		    g.drawString(txtCollect, pos.x, pos.y+105);
+	    }
+	    
+
+   
 	}
 	
 
@@ -240,17 +276,21 @@ public class Robot {
 	    
 	}
 	
-	
-	public void move(Dimension panelSize) {
+	public void move(Dimension panelSize, PVector f) {
 		
 		if (lightOn) lightOn = false;
 		else lightOn = true;
-		
+	
+
+		f.limit(0.1f);//Steering force
+		speed.add(f);//combined force
+		speed.limit(maxSpeed);
 		pos.add(speed);
+		
+		//if (hunt) pos.setMag(maxSpeed);
+		
 		collisionValidate(panelSize);
-		//advanceCollision(panelSize);
-		
-		
+
 		brushAngle += brushSpeed;
 
 		// keep angle from growing forever 
@@ -262,21 +302,23 @@ public class Robot {
 		//System.out.println(pos);
 	}
 	
+	
 	private Rectangle2D getBounds() {
-		
-		
+		/*
 		double brushMargin = scale * 16;
 		double r = scale * (dia / 2.0);
 		double x   = pos.x - r - brushMargin;
 	    double y    = pos.y - r - brushMargin;
 	    double size   = 2 * (r + brushMargin);
 	    
-
 		return new Rectangle2D.Double(x, y, size, size);
-
+		*/
+		return getBoundary().getBounds2D();
+	  
 	}
 	
-	private Shape getBoundary() {
+	//returns outline
+	public Shape getBoundary() {
 		AffineTransform at = new AffineTransform();
 		at.translate(pos.x, pos.y);
 	    at.rotate(theta);
@@ -286,16 +328,62 @@ public class Robot {
 		return at.createTransformedShape(robotArea);
 	}
 	
+	public PVector seen(Robot r) {
+		
+		if (scale > r.getScale()) return new PVector(0, 0);
+		
+		Rectangle2D robotBound = r.getBounds().getBounds2D();
+		Rectangle2D myBound = getBoundary().getBounds2D();
+		Shape FOVOutline = getFOV();
+		Shape robotOutline = r.getBoundary();
+		Shape myOutline = getBoundary();
+		
+		
+		PVector forceVector = new PVector(0, 0);
+		
+		
+		//FOVOutline.intersects(robotBound) || 
+		if (FOVOutline.intersects(robotBound) || myOutline.intersects(robotBound) || robotOutline.intersects(myBound)) {
+			forceVector = PVector.sub(this.pos, r.pos);
+			color = new Color(255,0,0);
+			seen = true;
+			hunt = false;
+			if (targets != null && targets.size() > 1) {
+				targets.removeFirst();
+				currentTarget = targets.getFirst();
+				reTarget = true;
+			}
+
+		}else {
+			color = RobotPane.green;
+			seen = false;
+			timerHunt ++;
+			if (timerHunt > 96) {
+				hunt = true;
+				timerHunt = 0;
+			}
+			speed.setMag(maxSpeed);
+		}
+			
+		return forceVector;
+		
+	    
+		
+	
+	}
+	
+	
+	//dust collision
 	private boolean collides(DustPile pile) {
 		
 		boolean collision = (getBoundary().intersects(pile.getBoundary().getBounds2D()) &&
 		        			pile.getBoundary().intersects(getBoundary().getBounds2D()));
-		
 		if (collision) System.out.println("Collision: " + collision);
 		return collision;
 
 	}
 	
+	//wall collision
 	private void collisionValidate(Dimension panelSize) {
 		
 		Shape bnd = getBoundary();
@@ -308,43 +396,36 @@ public class Robot {
 	    if (bnd.intersects(right) && speed.x > 0) speed.x *= -1;
 	    if (bnd.intersects(top) && speed.y < 0) speed.y *= -1;
 	    if (bnd.intersects(bottom) && speed.y > 0) speed.y *= -1;
+	    
 	}
 	
-	boolean approach(PVector f) {
+	boolean approach() {
+		
 		
 		boolean reach = false;
-		
-		if (target!=null) {
+
+		if (currentTarget!=null && hunt == true) {
 			// calculate the path to target point
-			PVector path = PVector.sub(target.getPos(), pos);
+			PVector path = PVector.sub(currentTarget.getPos(), pos);
 
-			// returns the direction as angle
-			float angle = path.heading();
 
-			// make a speed that points toward the target and then move
-			speed = PVector.fromAngle(angle);
-
+			path.limit(0.1f);                            // max steering strength
+			speed.add(path);
+			speed.limit(maxSpeed);
+			
 			// check if bug reaches target
-			if (collides(target) && path.mag() - (scale * dia) / 2 <= 0 ) {
+			if (collides(currentTarget) && path.mag() - (scale * dia) / 2 <= 0 ) {
 				reach = true;
-				System.out.println("Reached target at " + target.getPos());
+				collectCount++;
+				//System.out.println("Reached target at " + currentTarget.getPos());
 				//speed.mult(0.5f);
 			}
 		}
-		
-		//Steering along the wall
-		PVector wallSteerAccel = f.div((float)scale);
-		float speedValue = speed.mag();
-		speed.add(wallSteerAccel);
-		speed.normalize().mult(speedValue);
-		pos.add(speed);
-		
 		return reach;
 	}
 	
-	public Shape getFOV() {
+	private Shape getFOV() {
 		AffineTransform at = new AffineTransform();
-		
 		at.translate(pos.x, pos.y);
 		at.rotate(theta);
 		at.rotate(speed.heading());
@@ -354,6 +435,7 @@ public class Robot {
 		}
 		return at.createTransformedShape(fov);
 	}
+	
 	
 	private void reset(Dimension panelSize) {
 		Rectangle2D panelBounds =
@@ -373,8 +455,9 @@ public class Robot {
 		return lightOn;
 	}
 	
-	
-	
+	public void displayInfo(boolean display) {
+		this.displayInfo = display;
+	}
 	
 	
 	//getter, setter
@@ -395,12 +478,17 @@ public class Robot {
 		return dia;
 	}
 	
-	public void setTarget(DustPile target) {
-		this.target = target;
+	public void setTarget(ArrayList <DustPile> targets) {
+		this.targets = targets;
+		if (this.targets != null && currentTarget == null) {
+			this.currentTarget = this.targets.getFirst();
+			reTarget = false;
+		}
+		else currentTarget = null;
 	}
 	
 	public DustPile getTarget() {
-		return target;
+		return currentTarget;
 	}
 	
 	

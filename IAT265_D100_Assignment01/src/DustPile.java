@@ -21,23 +21,29 @@ public class DustPile {
 	private Color color;
 	private Random dice = new Random();
 	private double mScale = 1.5;
+	private int offset;
 	private Blob[] blobs;
 	private Area pileArea; 
-	
+	private static int NEXT_ID = 0;
+	private int id;
+	private boolean display = false;
     
     public DustPile(Dimension dim) {
     	color = RobotPane.green;
     	r = 10;
-    	scale = dice.nextDouble(0.4, 1);
+    	scale = dice.nextDouble(0.2, 0.6);
     	pileArea = new Area();
-		pos = new PVector(dice.nextInt((int)(RobotPane.margin*mScale), 
-				dim.width - (int)(RobotPane.margin*mScale)),
-				dice.nextInt((int)(RobotPane.margin*mScale), 
-				dim.height - (int)(RobotPane.margin*mScale)));
+    	offset = 2;
+    	this.id = NEXT_ID++;
+		pos = new PVector(dice.nextInt((int)(offset*RobotPane.margin*mScale), 
+				dim.width - (int)(offset*RobotPane.margin*mScale)),
+				dice.nextInt((int)(offset*RobotPane.margin*mScale), 
+				dim.height - (int)(offset*RobotPane.margin*mScale)));
 		//System.out.println(pos);
 		generateCluster();
     }
     
+    //overload
     public DustPile(PVector pos) {
     	color = RobotPane.green;
     	r = 10;
@@ -114,7 +120,6 @@ public class DustPile {
             double y = b.oy - b.h / 2.0;
             double w = b.w;
             double h = b.h;
-            double angle = b.angle;
 
             Shape localpile = new Ellipse2D.Double(x, y, w, h);
             // rotate around the blob center
@@ -130,16 +135,21 @@ public class DustPile {
         g.setColor(RobotPane.amber);
         g.setTransform(old);
         
-        //Draw bounds
-        //g.setStroke(new BasicStroke(2f)); 
-        //g.draw(getBoundary());
-        //g.setStroke(new BasicStroke(3f)); 
-        //g.draw(getBoundary().getBounds2D());
+        if (display) {
+        	//Draw bounds
+            g.setStroke(new BasicStroke(2f)); 
+            g.draw(getBoundary());
+            g.setStroke(new BasicStroke(3f)); 
+            g.draw(getBoundary().getBounds2D());
+            
+            g.setColor(Color.WHITE);
+    	    g.setFont(new Font("Monospaced", Font.BOLD, 16));
+    	    String textScale = "Scale " + String.format("%.2f", scale);;
+    	    g.drawString(textScale, pos.x, pos.y);
+    	    String textId = "ID " + id;
+    	    g.drawString(textId, pos.x, pos.y + 15);
+        }
         
-        g.setColor(Color.WHITE);
-	    g.setFont(new Font("Monospaced", Font.BOLD, 24));
-	    String text = String.format("%.2f", scale);;
-	    g.drawString(text, pos.x, pos.y);
 
 
     }
@@ -168,8 +178,14 @@ public class DustPile {
     	
     }
     
+    public int getId() {
+    	return id;
+    }
     public void enlarge() {
     	if (scale < 1.5) scale += 0.1;
     }
     
+    public void displayInfo(boolean display) {
+    	this.display = display;
+    }
 }

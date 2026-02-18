@@ -1,5 +1,6 @@
 
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -7,10 +8,12 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +42,8 @@ public class RobotPane extends JPanel implements ActionListener{
 	private Room room;
 	private int fps = 24;
 	private Timer t;
+	private Shape infoButton;
+	boolean showInfo;
 	//private int pileTimer; // custom timer used to generate a seed after 5 seconds
 
 	
@@ -48,9 +53,9 @@ public class RobotPane extends JPanel implements ActionListener{
 		this.setBackground(Color.BLACK);
 		this.addMouseListener(new MyMouseAdapter());
 		
-		robotCount = 2;
+		robotCount = 5;
 		pileCount = robotCount*2;
-
+		//pileCount = 0;
 				
 	}
 	
@@ -63,6 +68,21 @@ public class RobotPane extends JPanel implements ActionListener{
 	        RenderingHints.KEY_ANTIALIASING,
 	        RenderingHints.VALUE_ANTIALIAS_ON
 	    );
+	    
+	    
+	    infoButton = new Ellipse2D.Double(margin/4, margin/4, margin/2, margin/2);
+	    g2.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
+	    
+	    if(showInfo) g2.setColor(green);
+	    else g2.setColor(Color.BLACK);
+	    g2.fill(infoButton);
+	    g2.setColor(green);
+	    g2.draw(infoButton);
+	    g.setColor(Color.WHITE);
+	    g.setFont(new Font("Courier Prime", Font.BOLD, 16));
+	    String txtShowInfo = "Debug " + showInfo;
+	    g.drawString(txtShowInfo, margin/4 + margin, margin/4 + 20);
+	    
 	    
 	    if (piles != null) for (DustPile dust : piles) {
 		    dust.drawDustPile(g2);
@@ -87,28 +107,43 @@ public class RobotPane extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent arg0) {
 		// TODO Auto-generated method stub
 		
-		if (robots != null && piles != null) targetAquisition();
+		//Acquire targets
+		if (piles != null) {
+			targetAquisition();
+		}
 
+		//Set targets
 		for (Robot r : robots) {
-			PVector f = room.wallPushForce(r);
-			if (r.approach(f)) {
+
+			if (r.approach()) {
 				
 				DustPile t = r.getTarget();
 				piles.remove(t);
 				r.setTarget(null);
-				
 				piles.add(new DustPile(getSize()));
 				count++;
 			}
 		}
 		
-		if (!robots.isEmpty()) {
+		
+		if (robots.size() > 1) {
 			for (Robot r : robots) {
-				r.move(getSize());
-				//System.out.println("robot moved");
+			    PVector f = room.wallPushForce(r).div((float)r.getScale());
+			    for (Robot o : robots) {	
+			    	if (r != o) f.add(r.seen(o));
+			    }
+			r.move(getSize(), f);        
 			}
-			
 		}
+		
+		else {
+			Robot r = robots.getFirst();
+			PVector f = room.wallPushForce(robots.getFirst());
+
+		    r.move(getSize(), f);
+		}
+		
+		
 		repaint();
 	}
 	
@@ -120,10 +155,17 @@ public class RobotPane extends JPanel implements ActionListener{
 	    	
 	        //System.out.println(e.toString());
 	    	
-	    	if (e.getClickCount() == 2) {
+	    	if (e.getClickCount() == 1 && infoButton.contains(getMousePosition())) {
+	    		showInfo = !showInfo;
+	    		displayRobotInfo();
+	    		displayPileInfo();
+	    	} 
+	    	
+	    	if (e.getClickCount() == 2 && room.getBound().contains(getMousePosition())) {
 	    		PVector pos = new PVector(e.getX(), e.getY());
 		        piles.add(new DustPile(pos));
 	    	}
+	    	
 	        for (DustPile pile: piles) {
 		    	if (e.isControlDown() && pile.checkMouseHit(e)) {
 		    		System.out.println("enlarged");
@@ -141,11 +183,11 @@ public class RobotPane extends JPanel implements ActionListener{
 	//class methods
 	public void simulationBegin() {
 		
-		
+		showInfo = false;
 		piles = new ArrayList<DustPile>();
 		for (int i = 0; i < pileCount; i++) piles.add(new DustPile(getSize()));
 		robots = new ArrayList<Robot>();
-		for (int i = 0; i < robotCount; i++) robots.add(new Robot(getSize()));
+		for (int i = 0; i < robotCount; i++) robots.add(new Robot(getSize(), i));
 		room = new Room(getSize());
 		//pileTimer = 0;
 		t = new Timer(1000/fps, this);
@@ -163,10 +205,13 @@ public class RobotPane extends JPanel implements ActionListener{
 		
 		for (Robot r: robots) {
 			
-			DustPile target = null;
+			ArrayList <DustPile> targets = new ArrayList<DustPile>();
+			DustPile mainTarget = null;
+			DustPile secTarget = null;
 			double minDist = Double.MAX_VALUE;
 			
 			for (DustPile p : piles) {
+				
 				
 				if (p.getScale() <= r.getScale()) {
 					
@@ -174,11 +219,18 @@ public class RobotPane extends JPanel implements ActionListener{
 					
 					if (dist < minDist) {
 						minDist = dist;
-						target = p;
+						secTarget = mainTarget;
+						mainTarget = p;
+						
 					}
+				//System.out.println("target: " + targets);
+
+
 				}
 			}
-			r.setTarget(target);
+			targets.add(mainTarget);
+			targets.add(secTarget);
+			r.setTarget(targets);
 		}
 	}
 	
@@ -205,4 +257,15 @@ public class RobotPane extends JPanel implements ActionListener{
 	    g2.drawString(text, x, y);
 	}
 	
+	private void displayRobotInfo() {
+		for (Robot r : robots) {
+			r.displayInfo(showInfo);
+		}
+	}
+	
+	private void displayPileInfo() {
+		for (DustPile d : piles) {
+			d.displayInfo(showInfo);
+		}
+	}
 }
