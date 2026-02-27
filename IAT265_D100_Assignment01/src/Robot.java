@@ -83,12 +83,15 @@ public class Robot {
 		hunt = true;
 		reTarget = false;
 		collectCount = 0;
+		
+		setShapes();
 	}
 	
 
 	private void setShapes() {
 		float sCof = 0.15f;
 		sight = width * maxSpeed/2 * sCof;
+		robotArea = new Area();
 		
 		//body shapes (local coords)
 		// outer circle
@@ -122,11 +125,12 @@ public class Robot {
 		
 		
 		fov = new Arc2D.Double(-sight, -sight, sight*2, sight*2, 45, 90, Arc2D.PIE);
+		robotArea.add(new Area(outer));
 	}
 	
 	public void drawRobot(Graphics2D g) {
-		setShapes(); 
-		robotArea.reset();
+
+		//robotArea.reset();
 
 		AffineTransform af = g.getTransform();
 		
@@ -188,7 +192,7 @@ public class Robot {
 		
 		//robot area outline
 		g.setColor(RobotPane.amber);
-		robotArea.add(new Area(outer));
+		//robotArea.add(new Area(outer));
 		if (displayInfo) g.draw(robotArea);
 		g.setTransform(af);//reset for bounding box
 		
@@ -267,7 +271,7 @@ public class Robot {
 	    Shape transformedOutline = at.createTransformedShape(bristleOutline);
 	    
 	    //g.draw(bristleOutline);
-	    robotArea.add(new Area(transformedOutline));
+	    //robotArea.add(new Area(transformedOutline));
 	    
 	    g.setTransform(old);;
 	    
@@ -282,7 +286,7 @@ public class Robot {
 		else lightOn = true;
 	
 
-		f.limit(0.1f);//Steering force
+		f.limit(0.3f);//Steering force
 		speed.add(f);//combined force
 		speed.limit(maxSpeed);
 		pos.add(speed);
@@ -304,15 +308,6 @@ public class Robot {
 	
 	
 	private Rectangle2D getBounds() {
-		/*
-		double brushMargin = scale * 16;
-		double r = scale * (dia / 2.0);
-		double x   = pos.x - r - brushMargin;
-	    double y    = pos.y - r - brushMargin;
-	    double size   = 2 * (r + brushMargin);
-	    
-		return new Rectangle2D.Double(x, y, size, size);
-		*/
 		return getBoundary().getBounds2D();
 	  
 	}
@@ -332,7 +327,7 @@ public class Robot {
 		
 		if (scale > r.getScale()) return new PVector(0, 0);
 		
-		Rectangle2D robotBound = r.getBounds().getBounds2D();
+		Rectangle2D robotBound = r.getBounds();
 		Rectangle2D myBound = getBoundary().getBounds2D();
 		Shape FOVOutline = getFOV();
 		Shape robotOutline = r.getBoundary();
@@ -342,15 +337,15 @@ public class Robot {
 		PVector forceVector = new PVector(0, 0);
 		
 		
-		//FOVOutline.intersects(robotBound) || 
+		//intersects
 		if (FOVOutline.intersects(robotBound) || myOutline.intersects(robotBound) || robotOutline.intersects(myBound)) {
 			forceVector = PVector.sub(this.pos, r.pos);
 			color = new Color(255,0,0);
 			seen = true;
 			hunt = false;
 			if (targets != null && targets.size() > 1) {
-				targets.removeFirst();
-				currentTarget = targets.getFirst();
+				targets.remove(0);
+				currentTarget = targets.get(0);
 				reTarget = true;
 			}
 
@@ -362,7 +357,7 @@ public class Robot {
 				hunt = true;
 				timerHunt = 0;
 			}
-			speed.setMag(maxSpeed);
+
 		}
 			
 		return forceVector;
@@ -481,7 +476,7 @@ public class Robot {
 	public void setTarget(ArrayList <DustPile> targets) {
 		this.targets = targets;
 		if (this.targets != null && currentTarget == null) {
-			this.currentTarget = this.targets.getFirst();
+			this.currentTarget = this.targets.get(0);
 			reTarget = false;
 		}
 		else currentTarget = null;

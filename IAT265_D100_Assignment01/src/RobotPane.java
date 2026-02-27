@@ -107,44 +107,46 @@ public class RobotPane extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent arg0) {
 		// TODO Auto-generated method stub
 		
-		//Acquire targets
-		if (piles != null) {
-			targetAquisition();
-		}
+		 //Target acquisition
+	    if (piles != null) {
+	        targetAquisition();
+	    }
 
-		//Set targets
-		for (Robot r : robots) {
+	    //Compute forces and move robots
+	    for (Robot r : robots) {
 
-			if (r.approach()) {
-				
-				DustPile t = r.getTarget();
-				piles.remove(t);
-				r.setTarget(null);
-				piles.add(new DustPile(getSize()));
-				count++;
-			}
-		}
-		
-		
-		if (robots.size() > 1) {
-			for (Robot r : robots) {
-			    PVector f = room.wallPushForce(r).div((float)r.getScale());
-			    for (Robot o : robots) {	
-			    	if (r != o) f.add(r.seen(o));
-			    }
-			r.move(getSize(), f);        
-			}
-		}
-		
-		else {
-			Robot r = robots.getFirst();
-			PVector f = room.wallPushForce(robots.getFirst());
+	        PVector totalForce = room.wallPushForce(r).div((float) r.getScale());
 
-		    r.move(getSize(), f);
-		}
-		
-		
-		repaint();
+	        for (Robot other : robots) {
+	            if (r != other) {
+	                totalForce.add(r.seen(other));
+	            }
+	        }
+
+	        r.move(getSize(), totalForce);
+	    }
+
+	    //Resolve dust collection AFTER movement
+	    ArrayList<DustPile> toRemove = new ArrayList<>();
+
+	    for (Robot r : robots) {
+	        if (r.approach()) {
+	            DustPile target = r.getTarget();
+	            if (target != null) {
+	                toRemove.add(target);
+	                r.setTarget(null);
+	                count++;
+	            }
+	        }
+	    }
+
+	    //Remove collected piles
+	    for (DustPile d : toRemove) {
+	        piles.remove(d);
+	        piles.add(new DustPile(getSize()));
+	    }
+
+	    repaint();
 	}
 	
 	
@@ -228,9 +230,14 @@ public class RobotPane extends JPanel implements ActionListener{
 
 				}
 			}
-			targets.add(mainTarget);
-			targets.add(secTarget);
-			r.setTarget(targets);
+			
+			if (mainTarget != null) {
+			    targets.add(mainTarget);
+			    if (secTarget != null) targets.add(secTarget);
+			    r.setTarget(targets);
+			} else {
+			    r.setTarget(null);
+			}
 		}
 	}
 	
