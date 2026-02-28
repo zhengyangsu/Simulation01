@@ -13,43 +13,10 @@ import java.util.Random;
 import processing.core.PVector;
 
 
-public class Robot {
+public class Robot extends Machine{
 	
 	//properties fields
-	
-	private int width;
-	private int height;
-    private PVector pos, speed;
-    private float maxSpeed;
-    private int dia;
-	private int id;
-	private int targetId;
-	private Color color;
-	private Random dice = new Random();
-	private double scale;
-	//private double left;
-    //private double right;
-    //private double top;
-    //private double bottom;
-    private double theta;
-    private double brushAngle = 0;
-    private double brushSpeed = 0.25; // radians per frame
-    private boolean lightOn;
-    private boolean hunt;
-    private boolean seen;
-    private boolean reTarget;
-    private boolean displayInfo;
-    private int collectCount;
-    private int timerHunt;
-    private Area robotArea;
-    private int timerLight;
-    private DustPile currentTarget;
-    private ArrayList<DustPile> targets;
-	private Arc2D.Double fov; //field-of-view
-	private float sight;
-	private Shape outer;
-	private Shape inner;
-	private Shape button;
+	private int timerEscape;
 	private Shape panelArc;
 	private Shape panelLineL;
 	private Shape panelLineR;
@@ -57,38 +24,20 @@ public class Robot {
 	private Shape eye;
 	private Shape browL;
 	private Shape browR;
+	private double brushAngle = 0;
+	private double brushSpeed = 0.25; // radians per frame
+	private boolean escape;
 	
 	//constructor
 	public Robot(Dimension dim, int id) {
-		this.id = id;
-		dia = 70;
-		scale = dice.nextDouble(0.6, 1);
-		maxSpeed = 2;
-		this.width = dim.width;
-		this.height = dim.height;
-		float x = (float)dice.nextDouble(RobotPane.margin + dia, dim.width - RobotPane.margin - dia);
-		float y = (float)dice.nextDouble(RobotPane.margin + dia, dim.height - RobotPane.margin - dia);
-
-		pos = new PVector(x , y);
-
-		speed = new PVector(dice.nextInt(1, 10), dice.nextInt(1, 10));
-		speed.limit(maxSpeed);
-		
-		theta = Math.toRadians(90);
-		lightOn = false;
-		robotArea = new Area();
-		timerLight =0;
-		color = RobotPane.green;
-		currentTarget = null;
-		hunt = true;
-		reTarget = false;
-		collectCount = 0;
-		
+		super(dim, id);	
+		timerEscape = 0;
+		escape = !hunt;
 		setShapes();
 	}
 	
-
-	private void setShapes() {
+	@Override
+	protected void setShapes() {
 		float sCof = 0.15f;
 		sight = width * maxSpeed/2 * sCof;
 		robotArea = new Area();
@@ -128,9 +77,8 @@ public class Robot {
 		robotArea.add(new Area(outer));
 	}
 	
-	public void drawRobot(Graphics2D g) {
-
-		//robotArea.reset();
+	@Override
+	public void draw(Graphics2D g) {
 
 		AffineTransform af = g.getTransform();
 		
@@ -201,9 +149,6 @@ public class Robot {
 			g.draw(getFOV());
 		}
 		
-		
-		
-	    
 	    if (displayInfo) {
 	    	// Display scale
 			g.setColor(Color.WHITE);
@@ -217,6 +162,7 @@ public class Robot {
 		    String txtTargetId = "target " + targetId;
 		    String txtReTarget = "reTarget " + reTarget;
 		    String txtCollect = "collect " + collectCount;
+		    String txtEscape = "escape " + escape;
 		    
 	    	g.drawString(txtScale, pos.x, pos.y);
 		    g.drawString(txtSpeed, pos.x, pos.y+15);
@@ -226,13 +172,14 @@ public class Robot {
 		    g.drawString(txtTargetId, pos.x, pos.y+75);
 		    g.drawString(txtReTarget, pos.x, pos.y+90);
 		    g.drawString(txtCollect, pos.x, pos.y+105);
+		    g.drawString(txtEscape, pos.x, pos.y+120);
 	    }
 	    
 
    
 	}
 	
-
+	//Draw moving brushes
 	private void drawBrushes(Graphics2D g, int side) {
 		// TODO Auto-generated method stub
 		
@@ -280,19 +227,19 @@ public class Robot {
 	    
 	}
 	
+	@Override
 	public void move(Dimension panelSize, PVector f) {
 		
 		if (lightOn) lightOn = false;
 		else lightOn = true;
 	
-
-		f.limit(0.3f);//Steering force
+		if(!escape) f.limit(0.3f);//Steering force
 		speed.add(f);//combined force
-		speed.limit(maxSpeed);
+		if(!escape)speed.limit(maxSpeed);
+		else speed.limit(maxSpeed * 3.5f);
 		pos.add(speed);
 		
 		//if (hunt) pos.setMag(maxSpeed);
-		
 		collisionValidate(panelSize);
 
 		brushAngle += brushSpeed;
@@ -306,39 +253,27 @@ public class Robot {
 		//System.out.println(pos);
 	}
 	
-	
-	private Rectangle2D getBounds() {
-		return getBoundary().getBounds2D();
-	  
-	}
-	
-	//returns outline
-	public Shape getBoundary() {
-		AffineTransform at = new AffineTransform();
-		at.translate(pos.x, pos.y);
-	    at.rotate(theta);
-		at.rotate(speed.heading());
-		at.scale(scale, scale);
-		if (speed.x < 0) at.scale(-1, 1);
-		return at.createTransformedShape(robotArea);
-	}
-	
-	public PVector seen(Robot r) {
-		
-		if (scale > r.getScale()) return new PVector(0, 0);
+	@Override
+	public PVector seen(Machine r) {
 		
 		Rectangle2D robotBound = r.getBounds();
 		Rectangle2D myBound = getBoundary().getBounds2D();
 		Shape FOVOutline = getFOV();
 		Shape robotOutline = r.getBoundary();
 		Shape myOutline = getBoundary();
+		PVector forceVector = new PVector(0, 0); 
+		Boolean intersect = false;
 		
+		if (FOVOutline.intersects(robotBound) || myOutline.intersects(robotBound) || robotOutline.intersects(myBound)) intersect = true;
 		
-		PVector forceVector = new PVector(0, 0);
+		if (r instanceof HunterBot && intersect) {
+			return escape((HunterBot) r); 
+		}
 		
-		
-		//intersects
-		if (FOVOutline.intersects(robotBound) || myOutline.intersects(robotBound) || robotOutline.intersects(myBound)) {
+		if (scale > r.getScale()) return new PVector(0, 0);
+			
+		//intersects with another robot
+		if (r instanceof Robot && intersect) {
 			forceVector = PVector.sub(this.pos, r.pos);
 			color = new Color(255,0,0);
 			seen = true;
@@ -349,7 +284,9 @@ public class Robot {
 				reTarget = true;
 			}
 
-		}else {
+		}
+		
+		else {
 			color = RobotPane.green;
 			seen = false;
 			timerHunt ++;
@@ -357,59 +294,39 @@ public class Robot {
 				hunt = true;
 				timerHunt = 0;
 			}
-
-		}
-			
+		}			
 		return forceVector;
-		
-	    
-		
 	
 	}
 	
-	
-	//dust collision
-	private boolean collides(DustPile pile) {
+	@Override
+	protected boolean targetCollisionCheck(Object target) {
+		boolean collision = false;
 		
-		boolean collision = (getBoundary().intersects(pile.getBoundary().getBounds2D()) &&
-		        			pile.getBoundary().intersects(getBoundary().getBounds2D()));
-		if (collision) System.out.println("Collision: " + collision);
+		if (target instanceof DustPile) {
+			DustPile pile = (DustPile) target;
+			collision = (getBoundary().intersects(pile.getBoundary().getBounds2D()) && pile.getBoundary().intersects(getBoundary().getBounds2D()));
+			if (collision) System.out.println("Collision: " + collision);
+		}
+		
 		return collision;
 
 	}
 	
-	//wall collision
-	private void collisionValidate(Dimension panelSize) {
-		
-		Shape bnd = getBoundary();
-	    Rectangle2D.Double top = new Rectangle2D.Double(0, 0, panelSize.width, RobotPane.margin);
-	    Rectangle2D.Double bottom = new Rectangle2D.Double(0, panelSize.height - RobotPane.margin, panelSize.width, RobotPane.margin);
-	    Rectangle2D.Double left = new Rectangle2D.Double(0, 0, RobotPane.margin, panelSize.height);
-	    Rectangle2D.Double right = new Rectangle2D.Double(panelSize.width - RobotPane.margin, 0, RobotPane.margin, panelSize.height);
-
-	    if (bnd.intersects(left) && speed.x < 0) speed.x *= -1;
-	    if (bnd.intersects(right) && speed.x > 0) speed.x *= -1;
-	    if (bnd.intersects(top) && speed.y < 0) speed.y *= -1;
-	    if (bnd.intersects(bottom) && speed.y > 0) speed.y *= -1;
-	    
-	}
-	
-	boolean approach() {
-		
-		
+	@Override
+	public boolean approach() {
+				
 		boolean reach = false;
 
 		if (currentTarget!=null && hunt == true) {
 			// calculate the path to target point
 			PVector path = PVector.sub(currentTarget.getPos(), pos);
-
-
 			path.limit(0.1f);                            // max steering strength
 			speed.add(path);
 			speed.limit(maxSpeed);
 			
 			// check if bug reaches target
-			if (collides(currentTarget) && path.mag() - (scale * dia) / 2 <= 0 ) {
+			if (targetCollisionCheck(currentTarget) && path.mag() - (scale * dia) / 2 <= 0 ) {
 				reach = true;
 				collectCount++;
 				//System.out.println("Reached target at " + currentTarget.getPos());
@@ -419,60 +336,7 @@ public class Robot {
 		return reach;
 	}
 	
-	private Shape getFOV() {
-		AffineTransform at = new AffineTransform();
-		at.translate(pos.x, pos.y);
-		at.rotate(theta);
-		at.rotate(speed.heading());
-		at.scale(scale, scale);
-		if (speed.x < 0) {
-		    at.scale(-1, 1); // flip
-		}
-		return at.createTransformedShape(fov);
-	}
-	
-	
-	private void reset(Dimension panelSize) {
-		Rectangle2D panelBounds =
-			    new Rectangle2D.Double(
-			        0,
-			        0,
-			        panelSize.width,
-			        panelSize.height
-			    );
-
-			if (!panelBounds.contains(getBounds())) {
-			    pos.set(panelSize.width / 2f, panelSize.height / 2f);
-			}
-	}
-	
-	boolean isLightOn() {
-		return lightOn;
-	}
-	
-	public void displayInfo(boolean display) {
-		this.displayInfo = display;
-	}
-	
-	
 	//getter, setter
-	
-	public PVector getPos() {
-		return pos;
-	}
-	
-	public double getRadius() {
-		return scale * (dia / 2.0);
-	}
-	
-	public double getScale() {
-		return scale;
-	}
-	
-	public int getDia() {
-		return dia;
-	}
-	
 	public void setTarget(ArrayList <DustPile> targets) {
 		this.targets = targets;
 		if (this.targets != null && currentTarget == null) {
@@ -485,10 +349,27 @@ public class Robot {
 	public DustPile getTarget() {
 		return currentTarget;
 	}
-	
-	
-	
-	
+
+	private PVector escape(HunterBot h) {
+		System.out.println("Escape from HunterBot " + h.getId());
+		hunt = false;
+		escape = true;
+		PVector normal = PVector.sub(this.pos, h.pos);
+		float distance = normal.mag();
+		normal.normalize();//PVector (target, current position)
+		if (timerEscape < 240) {
+			timerEscape++;
+		} else {
+			hunt = true;
+			escape = false;
+			timerEscape = 0;
+			return new PVector(0, 0);
+		}
+		
+		float strength = 1.0f / (distance + 1);
+		PVector escapeVector = normal.copy().mult(strength * maxSpeed); // scale by distance
+		return escapeVector;
+	}
 	
 	
 }

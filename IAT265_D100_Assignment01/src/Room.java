@@ -191,7 +191,7 @@ public class Room {
 		
 	}
 	
-	public PVector wallPushForce(Robot r) {
+	public PVector wallPushForce(Machine r) {
 		
 		
 		PVector force = new PVector();
