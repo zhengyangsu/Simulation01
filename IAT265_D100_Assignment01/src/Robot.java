@@ -1,5 +1,13 @@
 
-
+/*
+Robot has 
+unique method such as escape(), drawBrushes(), setter and getter that is unique to Robot. 
+state machine to handle the behavior of hunting and avoiding other Robot. 
+move(), seen(), approach() targetCollisionCheck() and draw() 
+are overridden for robot to handle its unique behavior and input(DustPile) and unique LOOK.
+unique field enum State - HUNTING, ESCAPING, AVOIDING, currentSate and robotTarget
+*/
+	
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -8,10 +16,7 @@ import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.*;
 import java.util.ArrayList;
-import java.util.Random;
-
 import processing.core.PVector;
-
 
 public class Robot extends Machine{
 	
@@ -27,7 +32,13 @@ public class Robot extends Machine{
 	private double brushAngle = 0;
 	private double brushSpeed = 0.25; // radians per frame
 	private boolean escape;
-	
+	private enum State {
+	    HUNTING,    //searching for and moving toward dust
+	    ESCAPING,   //high-speed flight from a HunterBot
+	    AVOIDING    //brief cooldown after interacting with another Robot
+	}
+
+	private State currentState = State.HUNTING;
 	//constructor
 	public Robot(Dimension dim, int id) {
 		super(dim, id);	
@@ -43,7 +54,7 @@ public class Robot extends Machine{
 		robotArea = new Area();
 		
 		//body shapes (local coords)
-		// outer circle
+		//outer circle
 		outer = new Ellipse2D.Double(-dia / 2.0, -dia / 2.0, dia, dia);
 		
 		double d1 = dia * 4.0 / 5.0;
@@ -52,7 +63,7 @@ public class Robot extends Machine{
 		double d2 = dia * 1.0 / 10.0;
 		button = new Ellipse2D.Double(-d2 / 2.0, d2 + 5, d2, d2);
 		
-		// power panel (arc + two lines)
+		//power panel (arc + two lines)
 		double d3 = dia / 4.0;
 		panelArc = new Arc2D.Double(-d3 / 2.0, d3 - 10, d3, d3, 0, 180, Arc2D.OPEN);
 		panelLineL = new Line2D.Double(-d3 / 2.0, d3, -d3 / 2.0, 33);
@@ -67,7 +78,7 @@ public class Robot extends Machine{
 		face.quadTo(15, -10, 15, -15);
 		face.lineTo(15, -23);
 		
-		// eyes + brows
+		//eyes + brows
 		eye = new RoundRectangle2D.Double(-3 / 2.0, -20, 3, 4, 2, 2);
 		browL = new Line2D.Double(-10, -18, -7, -18);
 		browR = new Line2D.Double(10, -18, 7, -18);
@@ -79,7 +90,7 @@ public class Robot extends Machine{
 	
 	@Override
 	public void draw(Graphics2D g) {
-
+		
 		AffineTransform af = g.getTransform();
 		
 		g.setColor(color);
@@ -94,7 +105,7 @@ public class Robot extends Machine{
 		    g.scale(-1, 1); // flip
 		}
 		
-		// brushes
+		//brushes
 		drawBrushes(g, 1);
 		drawBrushes(g, -1);
 
@@ -107,10 +118,10 @@ public class Robot extends Machine{
 		//fov
 		//g.draw(fov);
 		
-		// inner circle
+		//inner circle
 		g.draw(inner);
 		
-		// button circle
+		//button circle
 		if (lightOn && timerLight > 24) {
 			g.setColor(color);
 		    g.fill(button);
@@ -124,16 +135,16 @@ public class Robot extends Machine{
 		//g.setColor(color);
 		g.draw(button);
 		
-		// power panel (arc + two lines)
+		//power panel (arc + two lines)
 		g.setColor(color);
 		g.draw(panelArc);
 		g.draw(panelLineL);
 		g.draw(panelLineR);
 		
-		// face
+		//face
 		g.draw(face);
 
-		// eyes + brows
+		//eyes + brows
 		g.draw(eye);
 		g.draw(browL);
 		g.draw(browR);
@@ -150,7 +161,7 @@ public class Robot extends Machine{
 		}
 		
 	    if (displayInfo) {
-	    	// Display scale
+	    	//dDisplay scale
 			g.setColor(Color.WHITE);
 		    g.setFont(new Font("Monospaced", Font.BOLD, 16));
 		    String txtScale = "Scale " + String.format("%.2f", scale);
@@ -158,7 +169,7 @@ public class Robot extends Machine{
 		    String txtID = "ID " + id;
 		    String txtHunt = "Hunt " + hunt;
 		    String txtSeen = "Seen " + seen;
-		    if (currentTarget != null) targetId = currentTarget.getId();
+		    if (dustTarget != null) targetId = dustTarget.getId();
 		    String txtTargetId = "target " + targetId;
 		    String txtReTarget = "reTarget " + reTarget;
 		    String txtCollect = "collect " + collectCount;
@@ -179,7 +190,7 @@ public class Robot extends Machine{
    
 	}
 	
-	//Draw moving brushes
+	//draw moving brushes
 	private void drawBrushes(Graphics2D g, int side) {
 		// TODO Auto-generated method stub
 		
@@ -217,8 +228,8 @@ public class Robot extends Machine{
 	    Shape bristleOutline = new Ellipse2D.Double(0 - length, 0 - length, 2 * length, 2 * length);
 	    Shape transformedOutline = at.createTransformedShape(bristleOutline);
 	    
-	    //g.draw(bristleOutline);
-	    //robotArea.add(new Area(transformedOutline));
+	    g.draw(bristleOutline);
+	    robotArea.add(new Area(transformedOutline));
 	    
 	    g.setTransform(old);;
 	    
@@ -229,74 +240,114 @@ public class Robot extends Machine{
 	
 	@Override
 	public void move(Dimension panelSize, PVector f) {
-		
-		if (lightOn) lightOn = false;
-		else lightOn = true;
+	    //update State Timers
+	    switch (currentState) {
+	        case ESCAPING:
+	            timerEscape++;
+	            if (timerEscape > 48) {
+	                transitionTo(State.HUNTING);
+	            }
+	            break;
 	
-		if(!escape) f.limit(0.3f);//Steering force
-		speed.add(f);//combined force
-		if(!escape)speed.limit(maxSpeed);
-		else speed.limit(maxSpeed * 3.5f);
-		pos.add(speed);
-		
-		//if (hunt) pos.setMag(maxSpeed);
-		collisionValidate(panelSize);
+	        case AVOIDING:
+	            timerAvoid++;
+	            if (timerAvoid > 36) {
+	                transitionTo(State.HUNTING);
+	                color = RobotPane.green;
+	            }
+	            break;
+	            
+	        case HUNTING:
+	            // Standard hunting logic (no timer needed)
+	            break;
+	    }
+	
+	    //apply Physics based on State
+	    if (currentState == State.ESCAPING) {
+	        //apply raw force for flight
+	        speed.add(f); 
+	        speed.limit(maxSpeed * 2.5f);
+	    } else if (currentState == State.AVOIDING) {
+	        //when avoiding blend the steering force 'f' with momentum
+	        f.limit(0.8f); 
+	        speed.add(f);
+	        speed.limit(maxSpeed * 1.5f); //speed boost to get around the obstacle
+	    } else {
+	        f.limit(0.15f); //smooth steering hunting
+	        speed.add(f);
+	        speed.limit(maxSpeed);
+	    }
+	
+	    pos.add(speed);
+	
+	    //update animation regardless of state
+	    updateAnimation(panelSize);
+	}
 
-		brushAngle += brushSpeed;
+	//Helper to handle transitions cleanly
+	private void transitionTo(State newState) {
+	    currentState = newState;
+	    timerEscape = 0;
+	    timerAvoid = 0;
+	
+	    //synchronize legacy variables
+	    this.hunt = (newState == State.HUNTING);
+	    this.escape = (newState == State.ESCAPING);
+	    
+	    //update visual feedback
+	    if (newState == State.HUNTING) color = RobotPane.green;
+	}
 
-		// keep angle from growing forever 
-		if (brushAngle > Math.PI * 2) {
-		    brushAngle -= Math.PI * 2;
-		}
-		reset(panelSize);//if out of bounds, reset to center
-		
-		//System.out.println(pos);
+	private void updateAnimation(Dimension panelSize) {
+	    // Toggle light based on a slower timer, not every frame
+	    if (timerLight % 15 == 0) lightOn = !lightOn;
+	    timerLight++;
+
+	    brushAngle += brushSpeed;
+	    if (brushAngle > Math.PI * 2) brushAngle -= Math.PI * 2;
+
+	    collisionValidate(panelSize);
+	    reset(panelSize);
 	}
 	
 	@Override
 	public PVector seen(Machine r) {
-		
-		Rectangle2D robotBound = r.getBounds();
-		Rectangle2D myBound = getBoundary().getBounds2D();
-		Shape FOVOutline = getFOV();
-		Shape robotOutline = r.getBoundary();
-		Shape myOutline = getBoundary();
-		PVector forceVector = new PVector(0, 0); 
-		Boolean intersect = false;
-		
-		if (FOVOutline.intersects(robotBound) || myOutline.intersects(robotBound) || robotOutline.intersects(myBound)) intersect = true;
-		
-		if (r instanceof HunterBot && intersect) {
-			return escape((HunterBot) r); 
-		}
-		
-		if (scale > r.getScale()) return new PVector(0, 0);
-			
-		//intersects with another robot
-		if (r instanceof Robot && intersect) {
-			forceVector = PVector.sub(this.pos, r.pos);
-			color = new Color(255,0,0);
-			seen = true;
-			hunt = false;
-			if (targets != null && targets.size() > 1) {
-				targets.remove(0);
-				currentTarget = targets.get(0);
-				reTarget = true;
-			}
+		//if already escaping stays escaping
+	    if (currentState == State.ESCAPING) return new PVector(0, 0);
 
-		}
-		
-		else {
-			color = RobotPane.green;
-			seen = false;
-			timerHunt ++;
-			if (timerHunt > 96) {
-				hunt = true;
-				timerHunt = 0;
-			}
-		}			
-		return forceVector;
-	
+	    //calculate distance and intersection
+	    double dist = PVector.dist(this.pos, r.pos);
+	    boolean intersect = getFOV().intersects(r.getBounds()) || 
+	                        getBoundary().intersects(r.getBounds());
+
+	    if (intersect) {
+	        //hunterBot flee immediately
+	        if (r instanceof HunterBot) {
+	            transitionTo(State.ESCAPING);
+	            return escape((HunterBot)r); 
+	        }
+
+	        //robot avoidance
+	        if (r instanceof Robot && scale <= r.getScale()) {
+	            //only transition if we aren't already avoiding, to reset the timer
+	            if (currentState != State.AVOIDING) {
+	                transitionTo(State.AVOIDING);
+	                color = Color.RED;
+	            }
+
+	            //calculate a weighted repulsion force
+	            PVector repulsion = PVector.sub(this.pos, r.pos);
+	            repulsion.normalize();
+	            
+	            //closer it is, the stronger the push (Inverse Square Law logic)
+	            float strength = (float) (sight / (dist + 1));
+	            repulsion.mult(strength * 2.0f); 
+	            
+	            return repulsion; 
+	        }
+	    }
+	    
+	    return new PVector(0, 0);
 	}
 	
 	@Override
@@ -306,7 +357,7 @@ public class Robot extends Machine{
 		if (target instanceof DustPile) {
 			DustPile pile = (DustPile) target;
 			collision = (getBoundary().intersects(pile.getBoundary().getBounds2D()) && pile.getBoundary().intersects(getBoundary().getBounds2D()));
-			if (collision) System.out.println("Collision: " + collision);
+			//if (collision) System.out.println("Collision: " + collision);
 		}
 		
 		return collision;
@@ -318,15 +369,15 @@ public class Robot extends Machine{
 				
 		boolean reach = false;
 
-		if (currentTarget!=null && hunt == true) {
+		if (dustTarget!=null && hunt == true) {
 			// calculate the path to target point
-			PVector path = PVector.sub(currentTarget.getPos(), pos);
+			PVector path = PVector.sub(dustTarget.getPos(), pos);
 			path.limit(0.1f);                            // max steering strength
 			speed.add(path);
 			speed.limit(maxSpeed);
 			
-			// check if bug reaches target
-			if (targetCollisionCheck(currentTarget) && path.mag() - (scale * dia) / 2 <= 0 ) {
+			//check if bug reaches target
+			if (targetCollisionCheck(dustTarget) && path.mag() - (scale * dia) / 2 <= 0 ) {
 				reach = true;
 				collectCount++;
 				//System.out.println("Reached target at " + currentTarget.getPos());
@@ -339,36 +390,28 @@ public class Robot extends Machine{
 	//getter, setter
 	public void setTarget(ArrayList <DustPile> targets) {
 		this.targets = targets;
-		if (this.targets != null && currentTarget == null) {
-			this.currentTarget = this.targets.get(0);
+		if (this.targets != null && dustTarget == null) {
+			this.dustTarget = this.targets.get(0);
 			reTarget = false;
 		}
-		else currentTarget = null;
+		else dustTarget = null;
 	}
 	
 	public DustPile getTarget() {
-		return currentTarget;
+		return dustTarget;
 	}
 
 	private PVector escape(HunterBot h) {
-		System.out.println("Escape from HunterBot " + h.getId());
+		//System.out.println("Escape from HunterBot " + h.getId());
 		hunt = false;
 		escape = true;
 		PVector normal = PVector.sub(this.pos, h.pos);
-		float distance = normal.mag();
-		normal.normalize();//PVector (target, current position)
-		if (timerEscape < 240) {
-			timerEscape++;
-		} else {
-			hunt = true;
-			escape = false;
-			timerEscape = 0;
-			return new PVector(0, 0);
-		}
-		
-		float strength = 1.0f / (distance + 1);
-		PVector escapeVector = normal.copy().mult(strength * maxSpeed); // scale by distance
-		return escapeVector;
+		//float distance = normal.mag();
+		//normal.normalize();//PVector (target, current position)
+		//float strength = 1.0f / (distance + 1);
+		//PVector escapeVector = normal.copy().mult(strength * maxSpeed); // scale by distance
+		//return escapeVector;
+		return normal;
 	}
 	
 	

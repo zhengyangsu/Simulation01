@@ -14,9 +14,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
-import java.util.List;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
@@ -53,7 +51,7 @@ public class RobotPane extends JPanel implements ActionListener{
 		this.setBackground(Color.BLACK);
 		this.addMouseListener(new MyMouseAdapter());
 		
-		machineCount = 4;
+		machineCount = 7;
 		pileCount = machineCount*2;
 		//pileCount = 0;
 				
@@ -113,40 +111,87 @@ public class RobotPane extends JPanel implements ActionListener{
 	    }
 
 	    //Compute forces and move robots
-	    for (Machine r : machines) {
+	    for (Machine m : machines) {
 
-	        PVector totalForce = room.wallPushForce(r).div((float) r.getScale());
+	        PVector totalForce = room.wallPushForce(m).div((float) m.getScale());
 
 	        for (Machine o : machines) {
-	            if (r != o) {
-	                totalForce.add(r.seen(o));
+	            if (m != o) {
+	                totalForce.add(m.seen(o));
 	            }
 	        }
 
-	        r.move(getSize(), totalForce);
+	        m.move(getSize(), totalForce);
 	    }
 
-	    //Resolve dust collection AFTER movement
-	    ArrayList<DustPile> toRemove = new ArrayList<>();
-
-	    for (Machine r : machines) {
-	        if (r.approach() && r instanceof Robot) {
-	        	Robot robot = (Robot) r;
-	            DustPile target = (DustPile) robot.getTarget();
+	  //Resolve robot hunting AFTER movement
+	    ArrayList<Robot> toRemoveRobot = new ArrayList<>();
+	    for (Machine m : machines) {
+	        if (m.approach() && m instanceof HunterBot) {
+	        	HunterBot hunter = (HunterBot) m;
+	            Robot target = (Robot) hunter.getTarget();
 	            if (target != null) {
-	                toRemove.add(target);
-	                robot.setTarget(null);
-	                count++;
+	                toRemoveRobot.add(target);
+	                //hunter.setTarget(null);
+	                //System.out.println("Robot " + target.getId() + " hunted by HunterBot " + hunter.getId());
+	                //count++;
 	            }
 	        }
 	    }
-
-	    //Remove collected piles
-	    for (DustPile d : toRemove) {
-	        piles.remove(d);
-	        piles.add(new DustPile(getSize()));
+	    
+	    //Resolve dust collection AFTER movement
+	    ArrayList<DustPile> toRemoveDust = new ArrayList<>();
+	    for (Machine m : machines) {
+	        if (m instanceof Robot && !toRemoveRobot.contains(m)) {
+	        	Robot robot = (Robot) m;
+	        	
+	        	if (m.approach()) {
+	        		DustPile target = (DustPile) robot.getTarget();
+		            if (target != null) {
+		                toRemoveDust.add(target);
+		                robot.setTarget(null);
+		                count++;
+		            }
+	        	}
+	            
+	        }
 	    }
 
+	  //remove hunted robots
+	    if (!toRemoveRobot.isEmpty()) {
+	        for (Machine m : machines) {
+	            if (m instanceof HunterBot) {
+	                HunterBot h = (HunterBot) m;
+	                //if this hunter was chasing one of the robots we just deleted
+	                if (toRemoveRobot.contains(h.getTarget())) {
+	                    h.setTarget(null); 
+	                }
+	            }
+	        }
+	        
+	        for(int i = 0; i < toRemoveRobot.size(); i++) {
+	        	machines.add(new Robot(getSize(), machines.size() + i));
+	        }
+	        machines.removeAll(toRemoveRobot);
+	    }
+	    
+
+	    if (!toRemoveDust.isEmpty()) {
+	        for (Machine m : machines) {
+	        	if (m instanceof Robot) {
+	            	Robot r = (Robot) m;
+	                if (toRemoveDust.contains(r.getTarget())) {
+	                    r.setTarget(null); 
+	                }
+	            }
+	        }
+	        
+	        //generate new dust piles to replace the removed ones
+	        for(int i = 0; i < toRemoveDust.size(); i++) {
+	        	piles.add(new DustPile(getSize()));
+	        }
+	        piles.removeAll(toRemoveDust);
+	    }
 	    repaint();
 	}
 	
@@ -192,7 +237,7 @@ public class RobotPane extends JPanel implements ActionListener{
 		
 		machines = new ArrayList<Machine>();
 		for (int i = 0; i < machineCount; i++) {
-			if (i < 2)machines.add(new Robot(getSize(), i));
+			if (i < 5)machines.add(new Robot(getSize(), i));
 			else machines.add(new HunterBot(getSize(), i));
 		}
 		
@@ -210,12 +255,13 @@ public class RobotPane extends JPanel implements ActionListener{
 	private void targetAquisition() {
 		//find the closest dust pile
 		
+		dustTargetAquisition();
 		robotTargetAquisition();
 	}
 	
 	
 	//helpers
-	private void robotTargetAquisition() {
+	private void dustTargetAquisition() {
 		for (Machine r: machines) {
 			if (r instanceof Robot) {
 				Robot robot = (Robot) r;
@@ -249,7 +295,24 @@ public class RobotPane extends JPanel implements ActionListener{
 				    robot.setTarget(null);
 				}
 			}
-			
+		}
+	}
+	
+	private void robotTargetAquisition() {
+		Robot mainTarget = null;
+
+		for (Machine m: machines) {
+			if (m instanceof HunterBot) {
+				HunterBot hunter = (HunterBot) m;
+				if(hunter.found(hunter.getTarget())) continue;//skip if already has target
+				for (Machine o : machines) {
+					if (o instanceof Robot && hunter.found((Robot) o)) {
+						Robot robot = (Robot) o;
+							mainTarget = robot;
+							hunter.setTarget(mainTarget);
+					}
+				}
+			}
 		}
 	}
 	

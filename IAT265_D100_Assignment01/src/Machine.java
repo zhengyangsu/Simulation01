@@ -33,10 +33,10 @@ public abstract class Machine {
 	protected boolean reTarget;
 	protected boolean displayInfo;
 	protected int collectCount;
-	protected int timerHunt;
+	protected int timerAvoid;
 	protected Area robotArea;
 	protected int timerLight;
-	protected DustPile currentTarget;
+	protected DustPile dustTarget;
 	protected ArrayList<DustPile> targets;
 	protected Arc2D.Double fov; //field-of-view
 	protected float sight;
@@ -63,7 +63,7 @@ public abstract class Machine {
 		robotArea = new Area();
 		timerLight =0;
 		color = RobotPane.green;
-		currentTarget = null;
+		dustTarget = null;
 		hunt = true;
 		reTarget = false;
 		collectCount = 0;
@@ -154,7 +154,7 @@ public abstract class Machine {
 		    String txtID = "ID " + id;
 		    String txtHunt = "Hunt " + hunt;
 		    String txtSeen = "Seen " + seen;
-		    if (currentTarget != null) targetId = currentTarget.getId();
+		    if (dustTarget != null) targetId = dustTarget.getId();
 		    String txtTargetId = "target " + targetId;
 		    String txtReTarget = "reTarget " + reTarget;
 		    String txtCollect = "collect " + collectCount;
@@ -233,17 +233,17 @@ public abstract class Machine {
 			hunt = false;
 			if (targets != null && targets.size() > 1) {
 				targets.remove(0);
-				currentTarget = targets.get(0);
+				dustTarget = targets.get(0);
 				reTarget = true;
 			}
 
 		}else {
 			color = RobotPane.green;
 			seen = false;
-			timerHunt ++;
-			if (timerHunt > 96) {
+			timerAvoid ++;
+			if (timerAvoid > 96) {
 				hunt = true;
-				timerHunt = 0;
+				timerAvoid = 0;
 			}
 
 		}
@@ -306,9 +306,7 @@ public abstract class Machine {
 		this.displayInfo = display;
 	}
 	
-	
 	//getter, setter
-	
 	protected int getId() {
 		return id;
 	}

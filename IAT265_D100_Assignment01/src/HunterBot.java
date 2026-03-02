@@ -1,3 +1,13 @@
+/*
+hunter bot has 
+unique method such as found(), setter and getter that is unique to hunter bot. 
+state machine to handle the behavior of hunting and avoiding other hunter bots. 
+draw(), move(), seen(), approach()
+are overridden for hunter bot to handle its unique behavior and input(Robot) and unique LOOK.
+unique fields enum State - HUNTING, AVOIDING, currentSate and robotTarget
+*/
+
+
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -12,10 +22,10 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
+import processing.core.PVector;
 
 public class HunterBot extends Machine{
 
-	
 	//properties fields
 	private Shape panelArc;
 	private Shape panelLineL;
@@ -24,11 +34,19 @@ public class HunterBot extends Machine{
 	private Shape eye;
 	private Shape browL;
 	private Shape browR;
-	
+	private Robot robotTarget;
+	private enum State {
+	    HUNTING,    // searching for and moving toward Robot
+	    AVOIDING    // brief cooldown after interacting with another Hunter
+	}
+	private State currentState;
+
 	
 	public HunterBot(Dimension dim, int id) {
 		super(dim, id);
 		setShapes();
+		color = RobotPane.amber;
+		currentState = State.HUNTING;
 	}
 
 	
@@ -75,7 +93,6 @@ public class HunterBot extends Machine{
 	
 	@Override
 	public void draw(Graphics2D g) {
-		color = RobotPane.amber;
 		AffineTransform af = g.getTransform();
 		
 		g.setColor(color);
@@ -142,7 +159,7 @@ public class HunterBot extends Machine{
 		}
 		
 	    if (displayInfo) {
-	    	// Display scale
+	    	//display scale
 			g.setColor(Color.WHITE);
 		    g.setFont(new Font("Monospaced", Font.BOLD, 16));
 		    String txtScale = "Scale " + String.format("%.2f", scale);
@@ -150,7 +167,7 @@ public class HunterBot extends Machine{
 		    String txtID = "ID " + id;
 		    String txtHunt = "Hunt " + hunt;
 		    String txtSeen = "Seen " + seen;
-		    if (currentTarget != null) targetId = currentTarget.getId();
+		    if (robotTarget != null) targetId = robotTarget.getId();
 		    String txtTargetId = "target " + targetId;
 		    String txtReTarget = "reTarget " + reTarget;
 		    String txtCollect = "collect " + collectCount;
@@ -170,15 +187,135 @@ public class HunterBot extends Machine{
 	}
 	
 	@Override
+	public void move(Dimension panelSize, PVector f) {
+		//update State Timers (The missing part)
+	    if (currentState == State.AVOIDING) {
+	        timerAvoid++;
+			color = Color.RED; // Visual feedback for being in AVOIDING state
+
+	        if (timerAvoid > 40) { // Cooldown period
+	            transitionTo(State.HUNTING);
+	    		color = RobotPane.amber;
+
+	        }
+	    }
+
+	    //physics logic
+	    f.limit(0.3f); 
+	    speed.add(f);
+	    
+	    //use the State to decide speed limits
+	    if (currentState == State.AVOIDING) {
+	        speed.limit(maxSpeed * 2f); // Move slower while careful
+	    } else if (robotTarget != null) {
+	    	speed.normalize();
+	        speed.mult(3f * maxSpeed);
+	    }else {
+	    	speed.limit(maxSpeed);
+	    }
+	    
+	    pos.add(speed);
+	    collisionValidate(panelSize);
+	    reset(panelSize);
+	}
+	
+	@Override
+	public PVector seen(Machine r) {
+
+	    //calculate distance and intersection
+	    double dist = PVector.dist(this.pos, r.pos);
+	    
+	    boolean intersect = getFOV().intersects(r.getBounds()) || 
+	                        getBoundary().intersects(r.getBounds());
+
+        //robot avoidance
+        if (r instanceof HunterBot && scale <= r.getScale() && intersect) {
+            // Only transition if we aren't already avoiding, to reset the timer
+            if (currentState != State.AVOIDING) {
+                transitionTo(State.AVOIDING);                
+            }
+
+            //calculate a weighted repulsion force
+            PVector repulsion = PVector.sub(this.pos, r.pos);
+            repulsion.normalize();
+            
+            //closer it is, the stronger the push (Inverse Square Law logic)
+            float strength = (float) (sight / (dist + 1));
+            repulsion.mult(strength * 2.0f); 
+            
+            return repulsion; 
+        }
+	    
+	    
+	    return new PVector(0, 0);
+	}
+	
+	//helper to handle transitions cleanly
+	private void transitionTo(State newState) {
+	    currentState = newState;
+	    timerAvoid = 0;
+	
+	    //synchronize legacy variables
+	    this.hunt = (newState == State.HUNTING);
+	    
+	    //update visual feedback
+	    if (newState == State.HUNTING) color = RobotPane.green;
+	}
+	
+	@Override
 	protected boolean targetCollisionCheck(Object target) {
-		// TODO Auto-generated method stub
-		return false;
+		boolean collision = false;
+		
+		if (target instanceof Robot) {
+			Robot robot = (Robot) target;
+			collision = (getBoundary().intersects(robot.getBoundary().getBounds2D()) && robot.getBoundary().intersects(getBoundary().getBounds2D()));
+			//if (collision) System.out.println("Collision: " + collision);
+		}
+		
+		return collision;
 	}
 
 	@Override
 	public boolean approach() {
-		// TODO Auto-generated method stub
+		
+		if (robotTarget == null) {
+			speed.setMag(maxSpeed);
+			return false;		
+		}
+		
+		boolean reach = false;
+
+		PVector path = PVector.sub(robotTarget.getPos(), pos);
+		speed.add(path);
+		speed.normalize();
+		System.out.println("Approaching target at " + robotTarget.getPos() + " with speed " + speed);
+		// check if bug reaches target (targetCollisionCheck(robotTarget) && path.mag() - (scale * dia) / 2 <= 0 )
+		if (targetCollisionCheck(robotTarget) && path.mag() - (scale * dia) / 2 <= 0) {
+			reach = true;
+			collectCount++;
+			//System.out.println("Reached target at " + currentTarget.getPos());
+			//speed.mult(0.5f);
+		}
+		
+		return reach;
+	}
+	
+	public boolean found(Robot r) {
+		if (r == null) return false;
+		boolean intersect = getFOV().intersects(r.getBounds()) || 
+                getBoundary().intersects(r.getBounds());
+
+		if (intersect) {
+			return true;
+		}
 		return false;
 	}
 
+	public void setTarget(Robot target) {
+		this.robotTarget = target;
+	}
+	
+	public Robot getTarget() {
+		return robotTarget;
+	}
 }
