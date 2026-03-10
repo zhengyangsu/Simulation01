@@ -82,7 +82,7 @@ public class Room {
 		//System.out.println("Room size: " + width + " x " + hight);
 		g.setTransform(af);
 
-		drawTable(g, pos);
+		//drawTable(g, pos);
 		
 		int cols = 3;
 	    int rows = 2;
@@ -106,7 +106,7 @@ public class Room {
 	            
 	            double rot = 0;
 	            if (r ==1) rot = Math.PI;
-	            drawChair(g, new PVector(x, y), rot);
+	            //drawChair(g, new PVector(x, y), rot);
 	        }
 	    }
 	    

@@ -22,70 +22,27 @@ public class Robot extends Machine{
 	
 	//properties fields
 	private int timerEscape;
-	private Shape panelArc;
-	private Shape panelLineL;
-	private Shape panelLineR;
-	private Path2D face;
-	private Shape eye;
-	private Shape browL;
-	private Shape browR;
+	
 	private double brushAngle = 0;
 	private double brushSpeed = 0.25; // radians per frame
-	private boolean escape;
-	private enum State {
+	private enum BehaviourState {
 	    HUNTING,    //searching for and moving toward dust
 	    ESCAPING,   //high-speed flight from a HunterBot
 	    AVOIDING    //brief cooldown after interacting with another Robot
 	}
 
-	private State currentState = State.HUNTING;
+	private BehaviourState currentBehaviourState = BehaviourState.HUNTING;
 	//constructor
 	public Robot(Dimension dim, int id) {
 		super(dim, id);	
 		timerEscape = 0;
-		escape = !hunt;
 		setShapes();
 	}
 	
 	@Override
 	protected void setShapes() {
-		float sCof = 0.15f;
-		sight = width * maxSpeed/2 * sCof;
-		robotArea = new Area();
-		
-		//body shapes (local coords)
-		//outer circle
-		outer = new Ellipse2D.Double(-dia / 2.0, -dia / 2.0, dia, dia);
-		
-		double d1 = dia * 4.0 / 5.0;
-		inner = new Ellipse2D.Double(-d1 / 2.0, -d1 / 2.0, d1, d1);
-		
-		double d2 = dia * 1.0 / 10.0;
-		button = new Ellipse2D.Double(-d2 / 2.0, d2 + 5, d2, d2);
-		
-		//power panel (arc + two lines)
-		double d3 = dia / 4.0;
-		panelArc = new Arc2D.Double(-d3 / 2.0, d3 - 10, d3, d3, 0, 180, Arc2D.OPEN);
-		panelLineL = new Line2D.Double(-d3 / 2.0, d3, -d3 / 2.0, 33);
-		panelLineR = new Line2D.Double(-d3 / 2.0 + d3, d3, -d3 / 2.0 + d3, 33);
-		
-		//face
-		face = new Path2D.Double();
-		face.moveTo(-15, -23);
-		face.lineTo(-15, -15);
-		face.quadTo(-15, -10, -10, -10);
-		face.lineTo(10, -10);
-		face.quadTo(15, -10, 15, -15);
-		face.lineTo(15, -23);
-		
-		//eyes + brows
-		eye = new RoundRectangle2D.Double(-3 / 2.0, -20, 3, 4, 2, 2);
-		browL = new Line2D.Double(-10, -18, -7, -18);
-		browR = new Line2D.Double(10, -18, 7, -18);
-		
-		
-		fov = new Arc2D.Double(-sight, -sight, sight*2, sight*2, 45, 90, Arc2D.PIE);
-		robotArea.add(new Area(outer));
+		super.setShapes();
+		areaReset();
 	}
 	
 	@Override
@@ -109,83 +66,9 @@ public class Robot extends Machine{
 		drawBrushes(g, 1);
 		drawBrushes(g, -1);
 
-		// outer circle
-		g.setColor(Color.BLACK);
-		g.fill(outer);
-		g.setColor(color);
-		g.draw(outer);
 		
-		//fov
-		//g.draw(fov);
-		
-		//inner circle
-		g.draw(inner);
-		
-		//button circle
-		if (lightOn && timerLight > 24) {
-			g.setColor(color);
-		    g.fill(button);
-		    timerLight = 0;
-		} else {
-		    g.setColor(Color.BLACK);
-		    g.fill(button);
-		    timerLight++;
-		}
-		
-		//g.setColor(color);
-		g.draw(button);
-		
-		//power panel (arc + two lines)
-		g.setColor(color);
-		g.draw(panelArc);
-		g.draw(panelLineL);
-		g.draw(panelLineR);
-		
-		//face
-		g.draw(face);
-
-		//eyes + brows
-		g.draw(eye);
-		g.draw(browL);
-		g.draw(browR);
-		
-		//robot area outline
-		g.setColor(RobotPane.amber);
-		//robotArea.add(new Area(outer));
-		if (displayInfo) g.draw(robotArea);
 		g.setTransform(af);//reset for bounding box
-		
-		if (displayInfo) {
-			g.draw(getBoundary().getBounds2D());
-			g.draw(getFOV());
-		}
-		
-	    if (displayInfo) {
-	    	//dDisplay scale
-			g.setColor(Color.WHITE);
-		    g.setFont(new Font("Monospaced", Font.BOLD, 16));
-		    String txtScale = "Scale " + String.format("%.2f", scale);
-		    String txtSpeed = "Speed "+ String.format("%.2f", speed.mag());
-		    String txtID = "ID " + id;
-		    String txtHunt = "Hunt " + hunt;
-		    String txtSeen = "Seen " + seen;
-		    if (dustTarget != null) targetId = dustTarget.getId();
-		    String txtTargetId = "target " + targetId;
-		    String txtReTarget = "reTarget " + reTarget;
-		    String txtCollect = "collect " + collectCount;
-		    String txtEscape = "escape " + escape;
-		    
-	    	g.drawString(txtScale, pos.x, pos.y);
-		    g.drawString(txtSpeed, pos.x, pos.y+15);
-		    g.drawString(txtID, pos.x, pos.y+30);
-		    g.drawString(txtHunt, pos.x, pos.y+45);
-		    g.drawString(txtSeen, pos.x, pos.y+60);
-		    g.drawString(txtTargetId, pos.x, pos.y+75);
-		    g.drawString(txtReTarget, pos.x, pos.y+90);
-		    g.drawString(txtCollect, pos.x, pos.y+105);
-		    g.drawString(txtEscape, pos.x, pos.y+120);
-	    }
-	    
+		super.draw(g);
 
    
 	}
@@ -232,27 +115,24 @@ public class Robot extends Machine{
 	    robotArea.add(new Area(transformedOutline));
 	    
 	    g.setTransform(old);;
-	    
-	    
-	   
-	    
+   
 	}
 	
 	@Override
 	public void move(Dimension panelSize, PVector f) {
 	    //update State Timers
-	    switch (currentState) {
+	    switch (currentBehaviourState) {
 	        case ESCAPING:
 	            timerEscape++;
 	            if (timerEscape > 48) {
-	                transitionTo(State.HUNTING);
+	                transitionTo(BehaviourState.HUNTING);
 	            }
 	            break;
 	
 	        case AVOIDING:
 	            timerAvoid++;
 	            if (timerAvoid > 36) {
-	                transitionTo(State.HUNTING);
+	                transitionTo(BehaviourState.HUNTING);
 	                color = RobotPane.green;
 	            }
 	            break;
@@ -263,11 +143,11 @@ public class Robot extends Machine{
 	    }
 	
 	    //apply Physics based on State
-	    if (currentState == State.ESCAPING) {
+	    if (currentBehaviourState == BehaviourState.ESCAPING) {
 	        //apply raw force for flight
 	        speed.add(f); 
 	        speed.limit(maxSpeed * 2.5f);
-	    } else if (currentState == State.AVOIDING) {
+	    } else if (currentBehaviourState == BehaviourState.AVOIDING) {
 	        //when avoiding blend the steering force 'f' with momentum
 	        f.limit(0.8f); 
 	        speed.add(f);
@@ -285,17 +165,16 @@ public class Robot extends Machine{
 	}
 
 	//Helper to handle transitions cleanly
-	private void transitionTo(State newState) {
-	    currentState = newState;
+	private void transitionTo(BehaviourState newState) {
+	    currentBehaviourState = newState;
 	    timerEscape = 0;
 	    timerAvoid = 0;
 	
 	    //synchronize legacy variables
-	    this.hunt = (newState == State.HUNTING);
-	    this.escape = (newState == State.ESCAPING);
+	    this.hunt = (newState == BehaviourState.HUNTING);
 	    
 	    //update visual feedback
-	    if (newState == State.HUNTING) color = RobotPane.green;
+	    if (newState == BehaviourState.HUNTING) color = RobotPane.green;
 	}
 
 	private void updateAnimation(Dimension panelSize) {
@@ -313,7 +192,7 @@ public class Robot extends Machine{
 	@Override
 	public PVector seen(Machine r) {
 		//if already escaping stays escaping
-	    if (currentState == State.ESCAPING) return new PVector(0, 0);
+	    if (currentBehaviourState == BehaviourState.ESCAPING) return new PVector(0, 0);
 
 	    //calculate distance and intersection
 	    double dist = PVector.dist(this.pos, r.pos);
@@ -323,15 +202,15 @@ public class Robot extends Machine{
 	    if (intersect) {
 	        //hunterBot flee immediately
 	        if (r instanceof HunterBot) {
-	            transitionTo(State.ESCAPING);
+	            transitionTo(BehaviourState.ESCAPING);
 	            return escape((HunterBot)r); 
 	        }
 
 	        //robot avoidance
 	        if (r instanceof Robot && scale <= r.getScale()) {
 	            //only transition if we aren't already avoiding, to reset the timer
-	            if (currentState != State.AVOIDING) {
-	                transitionTo(State.AVOIDING);
+	            if (currentBehaviourState != BehaviourState.AVOIDING) {
+	                transitionTo(BehaviourState.AVOIDING);
 	                color = Color.RED;
 	            }
 
@@ -404,7 +283,6 @@ public class Robot extends Machine{
 	private PVector escape(HunterBot h) {
 		//System.out.println("Escape from HunterBot " + h.getId());
 		hunt = false;
-		escape = true;
 		PVector normal = PVector.sub(this.pos, h.pos);
 		//float distance = normal.mag();
 		//normal.normalize();//PVector (target, current position)

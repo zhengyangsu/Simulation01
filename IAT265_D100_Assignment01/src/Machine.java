@@ -9,7 +9,6 @@ import java.awt.Shape;
 import java.awt.geom.*;
 import java.util.ArrayList;
 import java.util.Random;
-
 import processing.core.PVector;
 
 
@@ -43,7 +42,18 @@ public abstract class Machine {
 	protected Shape outer;
 	protected Shape inner;
 	protected Shape button;
-
+	protected Shape panelArc;
+	protected Shape panelLineL;
+	protected Shape panelLineR;
+	protected Path2D face;
+	protected Shape eye;
+	protected Shape browL;
+	protected Shape browR;
+	protected enum BehaviourState {
+	    HUNTING,    // searching for and moving toward Robot
+	    AVOIDING    // brief cooldown after interacting with another Hunter
+	}
+	protected BehaviourState currentBehaviourState;
 	
 	//constructor
 	public Machine(Dimension dim, int id) {
@@ -61,13 +71,13 @@ public abstract class Machine {
 		theta = Math.toRadians(90);
 		lightOn = false;
 		robotArea = new Area();
-		timerLight =0;
+		timerLight = 0;
 		color = RobotPane.green;
 		dustTarget = null;
 		hunt = true;
 		reTarget = false;
 		collectCount = 0;
-		
+		currentBehaviourState = BehaviourState.HUNTING;
 		setShapes();
 	}
 	
@@ -78,7 +88,7 @@ public abstract class Machine {
 		robotArea = new Area();
 		
 		//body shapes (local coords)
-		// outer circle
+		//outer circle
 		outer = new Ellipse2D.Double(-dia / 2.0, -dia / 2.0, dia, dia);
 		
 		double d1 = dia * 4.0 / 5.0;
@@ -87,8 +97,29 @@ public abstract class Machine {
 		double d2 = dia * 1.0 / 10.0;
 		button = new Ellipse2D.Double(-d2 / 2.0, d2 + 5, d2, d2);
 		
+		//power panel (arc + two lines)
+		double d3 = dia / 4.0;
+		panelArc = new Arc2D.Double(-d3 / 2.0, d3 - 10, d3, d3, 0, 180, Arc2D.OPEN);
+		panelLineL = new Line2D.Double(-d3 / 2.0, d3, -d3 / 2.0, 33);
+		panelLineR = new Line2D.Double(-d3 / 2.0 + d3, d3, -d3 / 2.0 + d3, 33);
+		
+		//face
+		face = new Path2D.Double();
+		face.moveTo(-15, -23);
+		face.lineTo(-15, -15);
+		face.quadTo(-15, -10, -10, -10);
+		face.lineTo(10, -10);
+		face.quadTo(15, -10, 15, -15);
+		face.lineTo(15, -23);
+		
+		//eyes + brows
+		eye = new RoundRectangle2D.Double(-3 / 2.0, -20, 3, 4, 2, 2);
+		browL = new Line2D.Double(-10, -18, -7, -18);
+		browR = new Line2D.Double(10, -18, 7, -18);
+		
 		fov = new Arc2D.Double(-sight, -sight, sight*2, sight*2, 45, 90, Arc2D.PIE);
 		robotArea.add(new Area(outer));
+
 	}
 	
 	public void draw(Graphics2D g) {
@@ -107,7 +138,6 @@ public abstract class Machine {
 		    g.scale(-1, 1); // flip
 		}
 
-
 		// outer circle
 		g.setColor(Color.BLACK);
 		g.fill(outer);
@@ -121,7 +151,7 @@ public abstract class Machine {
 		g.draw(inner);
 		
 		// button circle
-		if (lightOn && timerLight > 24) {
+		if (timerLight > 24) {
 			g.setColor(color);
 		    g.fill(button);
 		    timerLight = 0;
@@ -134,6 +164,20 @@ public abstract class Machine {
 		//g.setColor(color);
 		g.draw(button);
 		
+		// power panel (arc + two lines)
+		g.setColor(color);
+		g.draw(panelArc);
+		g.draw(panelLineL);
+		g.draw(panelLineR);
+		
+		// face
+		g.draw(face);
+
+		// eyes + brows
+		g.draw(eye);
+		g.draw(browL);
+		g.draw(browR);
+
 		//robot area outline
 		g.setColor(RobotPane.amber);
 		//robotArea.add(new Area(outer));
@@ -168,17 +212,11 @@ public abstract class Machine {
 		    g.drawString(txtReTarget, pos.x, pos.y+90);
 		    g.drawString(txtCollect, pos.x, pos.y+105);
 	    }
-	    
-
    
 	}
 	
 	
 	public void move(Dimension panelSize, PVector f) {
-		
-		if (lightOn) lightOn = false;
-		else lightOn = true;
-	
 
 		f.limit(0.3f);//Steering force
 		speed.add(f);//combined force
@@ -305,6 +343,12 @@ public abstract class Machine {
 	public void displayInfo(boolean display) {
 		this.displayInfo = display;
 	}
+	
+	protected void areaReset(){
+		robotArea.reset();
+		robotArea.add(new Area(outer));
+	}
+
 	
 	//getter, setter
 	protected int getId() {

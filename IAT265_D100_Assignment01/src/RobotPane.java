@@ -34,6 +34,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	private int hight = paneHight - 2* margin - (int)stroke;
 	private static int count = 0;
 	private int machineCount;
+	private int robotCount;
 	private int pileCount;
 	private ArrayList<Machine> machines;
 	private ArrayList<DustPile> piles;
@@ -51,7 +52,8 @@ public class RobotPane extends JPanel implements ActionListener{
 		this.setBackground(Color.BLACK);
 		this.addMouseListener(new MyMouseAdapter());
 		
-		machineCount = 7;
+		machineCount = 2;
+		robotCount = 1;
 		pileCount = machineCount*2;
 		//pileCount = 0;
 				
@@ -94,7 +96,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	    }
 	    
 	    if (room != null) room.drawRoom(g2, getSize());
-	    drawCounter(g2);
+	    //drawCounter(g2);
 	    
 	    
 	    
@@ -237,7 +239,7 @@ public class RobotPane extends JPanel implements ActionListener{
 		
 		machines = new ArrayList<Machine>();
 		for (int i = 0; i < machineCount; i++) {
-			if (i < 5)machines.add(new Robot(getSize(), i));
+			if (i < robotCount)machines.add(new Robot(getSize(), i));
 			else machines.add(new HunterBot(getSize(), i));
 		}
 		
