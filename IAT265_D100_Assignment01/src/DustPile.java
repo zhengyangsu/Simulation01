@@ -171,7 +171,10 @@ public class DustPile {
     public double getScale() {
     	return scale;
     }
-
+    
+    public double getSize() {
+    	return scale * r;
+    }
     
     public PVector getPos() {
 		return pos;

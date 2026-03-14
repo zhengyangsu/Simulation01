@@ -11,7 +11,6 @@ unique field enum State - HUNTING, ESCAPING, AVOIDING, currentSate and robotTarg
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.*;
@@ -20,22 +19,16 @@ import processing.core.PVector;
 
 public class Robot extends Machine{
 	
+	//region
 	//properties fields
-	private int timerEscape;
-	
 	private double brushAngle = 0;
 	private double brushSpeed = 0.25; // radians per frame
-	private enum BehaviourState {
-	    HUNTING,    //searching for and moving toward dust
-	    ESCAPING,   //high-speed flight from a HunterBot
-	    AVOIDING    //brief cooldown after interacting with another Robot
-	}
-
-	private BehaviourState currentBehaviourState = BehaviourState.HUNTING;
+	//endregion
+	
 	//constructor
 	public Robot(Dimension dim, int id) {
 		super(dim, id);	
-		timerEscape = 0;
+		scale = dice.nextDouble(0.55, 0.65);
 		setShapes();
 	}
 	
@@ -120,62 +113,61 @@ public class Robot extends Machine{
 	
 	@Override
 	public void move(Dimension panelSize, PVector f) {
+		
+		if (energy >= 40) {
+	        currentEnergyState = EnergyState.NORMAL;
+	    } 
+	    else if (energy > 0) {
+	    	currentEnergyState = EnergyState.WEAK;
+	    } 
+	    else {
+	    	currentEnergyState = EnergyState.DEAD;
+	    }
+		
 	    //update State Timers
-	    switch (currentBehaviourState) {
-	        case ESCAPING:
-	            timerEscape++;
-	            if (timerEscape > 48) {
-	                transitionTo(BehaviourState.HUNTING);
-	            }
-	            break;
-	
-	        case AVOIDING:
-	            timerAvoid++;
-	            if (timerAvoid > 36) {
-	                transitionTo(BehaviourState.HUNTING);
-	                color = RobotPane.green;
-	            }
-	            break;
-	            
-	        case HUNTING:
-	            // Standard hunting logic (no timer needed)
-	            break;
-	    }
-	
-	    //apply Physics based on State
-	    if (currentBehaviourState == BehaviourState.ESCAPING) {
-	        //apply raw force for flight
-	        speed.add(f); 
-	        speed.limit(maxSpeed * 2.5f);
-	    } else if (currentBehaviourState == BehaviourState.AVOIDING) {
-	        //when avoiding blend the steering force 'f' with momentum
-	        f.limit(0.8f); 
-	        speed.add(f);
-	        speed.limit(maxSpeed * 1.5f); //speed boost to get around the obstacle
-	    } else {
-	        f.limit(0.15f); //smooth steering hunting
-	        speed.add(f);
-	        speed.limit(maxSpeed);
-	    }
-	
+		if (currentEnergyState != EnergyState.DEAD) {
+		    switch (currentBehaviourState) {
+		        case ESCAPING:
+		            timerEscape++;
+		            speed.add(f); 
+			        speed.limit(maxSpeed * 2.5f);
+		            if (timerEscape > 48) {
+		                transitionTo(BehaviourState.SEARCHING);
+		            }
+		            break;
+		
+		        case AVOIDING:
+		            timerAvoid++;
+		            f.limit(0.8f); 
+			        speed.add(f);
+			        speed.limit(maxSpeed * 1.5f);
+		            if (timerAvoid > 36) {
+		                transitionTo(BehaviourState.SEARCHING);
+		                color = RobotPane.green;
+		            }
+		            break;
+		            
+		        case SEARCHING:
+		            // Standard hunting logic (no timer needed)
+		        	f.limit(0.15f); //smooth steering hunting
+			        speed.add(f);
+			        speed.limit(maxSpeed);
+		            break;
+		            
+		        case HUNTING:
+		        	break;
+		    }
+		    
+		    updateAnimation(panelSize);
+		    
+		}else speed.mult(0);
+
 	    pos.add(speed);
-	
-	    //update animation regardless of state
-	    updateAnimation(panelSize);
+		energy -= engLossRatio;
+	    
 	}
 
-	//Helper to handle transitions cleanly
-	private void transitionTo(BehaviourState newState) {
-	    currentBehaviourState = newState;
-	    timerEscape = 0;
-	    timerAvoid = 0;
-	
-	    //synchronize legacy variables
-	    this.hunt = (newState == BehaviourState.HUNTING);
-	    
-	    //update visual feedback
-	    if (newState == BehaviourState.HUNTING) color = RobotPane.green;
-	}
+
 
 	private void updateAnimation(Dimension panelSize) {
 	    // Toggle light based on a slower timer, not every frame
@@ -248,7 +240,7 @@ public class Robot extends Machine{
 				
 		boolean reach = false;
 
-		if (dustTarget!=null && hunt == true) {
+		if (dustTarget!=null && currentBehaviourState == BehaviourState.SEARCHING) {
 			// calculate the path to target point
 			PVector path = PVector.sub(dustTarget.getPos(), pos);
 			path.limit(0.1f);                            // max steering strength
@@ -259,6 +251,7 @@ public class Robot extends Machine{
 			if (targetCollisionCheck(dustTarget) && path.mag() - (scale * dia) / 2 <= 0 ) {
 				reach = true;
 				collectCount++;
+				energy += dustTarget.getSize() * engGainRatio;
 				//System.out.println("Reached target at " + currentTarget.getPos());
 				//speed.mult(0.5f);
 			}
@@ -290,6 +283,12 @@ public class Robot extends Machine{
 		//PVector escapeVector = normal.copy().mult(strength * maxSpeed); // scale by distance
 		//return escapeVector;
 		return normal;
+	}
+
+	@Override
+	public void move(PVector f) {
+		// TODO Auto-generated method stub
+		
 	}
 	
 	

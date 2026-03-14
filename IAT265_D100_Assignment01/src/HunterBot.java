@@ -8,20 +8,10 @@ unique fields enum State - HUNTING, AVOIDING, currentSate and robotTarget
 */
 
 
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.Shape;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Arc2D;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Line2D;
-import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
-import java.awt.geom.RoundRectangle2D;
+
 import processing.core.PVector;
 
 public class HunterBot extends Machine{
@@ -31,6 +21,7 @@ public class HunterBot extends Machine{
 	
 	public HunterBot(Dimension dim, int id) {
 		super(dim, id);
+		scale = dice.nextDouble(0.7, 0.8);
 		color = RobotPane.amber;
 		setShapes();
 	}
@@ -41,6 +32,7 @@ public class HunterBot extends Machine{
 		super.setShapes();
 		//body shapes (local coords)
 		// outer circle
+		super.dia = 60;
 		super.outer = new Rectangle2D.Double(-dia / 2.0, -dia / 2.0, dia, dia);
 		double d1 = dia * 4.0 / 5.0;
 		super.inner = new Rectangle2D.Double(-d1 / 2.0, -d1 / 2.0, d1, d1);
@@ -50,34 +42,66 @@ public class HunterBot extends Machine{
 	
 	@Override
 	public void move(Dimension panelSize, PVector f) {
-		//update State Timers (The missing part)
+		
+		if (energy >= 40) {
+	        currentEnergyState = EnergyState.NORMAL;
+	    } 
+	    else if (energy > 0) {
+	    	currentEnergyState = EnergyState.WEAK;
+	    } 
+	    else {
+	    	currentEnergyState = EnergyState.DEAD;
+	    }
+		
+		//update State Timers
 	    if (currentBehaviourState == BehaviourState.AVOIDING) {
 	        timerAvoid++;
 			color = Color.RED; // Visual feedback for being in AVOIDING state
-
+			speed.limit(maxSpeed * 2f); 
 	        if (timerAvoid > 40) { // Cooldown period
 	            transitionTo(BehaviourState.HUNTING);
 	    		color = RobotPane.amber;
-
 	        }
-	    }
-
-	    //physics logic
-	    f.limit(0.3f); 
-	    speed.add(f);
-	    
-	    //use the State to decide speed limits
-	    if (currentBehaviourState == BehaviourState.AVOIDING) {
-	        speed.limit(maxSpeed * 2f); // Move slower while careful
-	    } else if (robotTarget != null) {
+	    }else if (robotTarget != null) {
 	    	speed.normalize();
 	        speed.mult(3f * maxSpeed);
 	    }else {
 	    	speed.limit(maxSpeed);
 	    }
+
+	    switch(currentBehaviourState) {
 	    
+	    	case AVOIDING:
+	    		timerAvoid++;
+				color = Color.RED; // Visual feedback for being in AVOIDING state
+				speed.limit(maxSpeed * 2f); 
+		        if (timerAvoid > 40) { // Cooldown period
+		            transitionTo(BehaviourState.HUNTING);
+		    		color = RobotPane.amber;
+		        }
+	    		break;
+	    		
+	    	case HUNTING:
+	    		if (robotTarget != null) {
+	    	    	speed.normalize();
+	    	        speed.mult(3f * maxSpeed);
+	    		}
+	    		break;
+	    		
+	    	case SEARCHING:
+	    		speed.setMag(maxSpeed);
+	    		break;
+	    		
+	    	case ESCAPING:
+	    		break;
+	    	
+	    
+	    }
+ 
+	    speed.add(f); 
 	    pos.add(speed);
-	    collisionValidate(panelSize);
+		energy -= engLossRatio;
+	    //collisionValidate(panelSize);
 	    reset(panelSize);
 	}
 	
@@ -112,18 +136,6 @@ public class HunterBot extends Machine{
 	    return new PVector(0, 0);
 	}
 	
-	//helper to handle transitions cleanly
-	private void transitionTo(BehaviourState newState) {
-	    currentBehaviourState = newState;
-	    timerAvoid = 0;
-	
-	    //synchronize legacy variables
-	    this.hunt = (newState == BehaviourState.HUNTING);
-	    
-	    //update visual feedback
-	    if (newState == BehaviourState.HUNTING) color = RobotPane.green;
-	}
-	
 	@Override
 	protected boolean targetCollisionCheck(Object target) {
 		boolean collision = false;
@@ -150,11 +162,13 @@ public class HunterBot extends Machine{
 		PVector path = PVector.sub(robotTarget.getPos(), pos);
 		speed.add(path);
 		speed.normalize();
-		System.out.println("Approaching target at " + robotTarget.getPos() + " with speed " + speed);
+		//System.out.println("Approaching target at " + robotTarget.getPos() + " with speed " + speed);
 		// check if bug reaches target (targetCollisionCheck(robotTarget) && path.mag() - (scale * dia) / 2 <= 0 )
 		if (targetCollisionCheck(robotTarget) && path.mag() - (scale * dia) / 2 <= 0) {
 			reach = true;
 			collectCount++;
+			energy += robotTarget.getScale() * engGainRatio;
+
 			//System.out.println("Reached target at " + currentTarget.getPos());
 			//speed.mult(0.5f);
 		}
@@ -179,5 +193,12 @@ public class HunterBot extends Machine{
 	
 	public Robot getTarget() {
 		return robotTarget;
+	}
+
+
+	@Override
+	public void move(PVector f) {
+		// TODO Auto-generated method stub
+		
 	}
 }

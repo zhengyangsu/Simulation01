@@ -1,4 +1,6 @@
-
+/*Abstract class Machine
+ * 
+*/
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -14,7 +16,9 @@ import processing.core.PVector;
 
 public abstract class Machine {
 	
+	
 	//properties fields
+	//region
 	protected int width;
 	protected int height;
 	protected PVector pos, speed;
@@ -33,11 +37,10 @@ public abstract class Machine {
 	protected boolean displayInfo;
 	protected int collectCount;
 	protected int timerAvoid;
-	protected Area robotArea;
 	protected int timerLight;
+	protected int timerEscape;
 	protected DustPile dustTarget;
 	protected ArrayList<DustPile> targets;
-	protected Arc2D.Double fov; //field-of-view
 	protected float sight;
 	protected Shape outer;
 	protected Shape inner;
@@ -49,11 +52,29 @@ public abstract class Machine {
 	protected Shape eye;
 	protected Shape browL;
 	protected Shape browR;
+	protected Shape fov; //field-of-view
+	protected Area robotArea;
+	
 	protected enum BehaviourState {
 	    HUNTING,    // searching for and moving toward Robot
-	    AVOIDING    // brief cooldown after interacting with another Hunter
+	    ESCAPING,   //high-speed flight from a HunterBot
+	    AVOIDING,    // brief cooldown after interacting with another Hunter
+	    SEARCHING
+	    
 	}
 	protected BehaviourState currentBehaviourState;
+	
+	protected enum EnergyState{
+		NORMAL,
+		WEAK,
+		DEAD
+	}
+	protected EnergyState currentEnergyState;
+	protected int energy;
+	protected int fullEnergy;
+	protected float engGainRatio = 100;                   //Energy gained per food size unit 
+	protected float engLossRatio = fullEnergy/(30*15);    //Energy loss per frame
+	//endregion
 	
 	//constructor
 	public Machine(Dimension dim, int id) {
@@ -61,8 +82,8 @@ public abstract class Machine {
 		dia = 70;
 		scale = dice.nextDouble(0.6, 1);
 		maxSpeed = 2;
-		this.width = dim.width;
-		this.height = dim.height;
+		width = dim.width;
+		height = dim.height;
 		float x = (float)dice.nextDouble(RobotPane.margin + dia, dim.width - RobotPane.margin - dia);
 		float y = (float)dice.nextDouble(RobotPane.margin + dia, dim.height - RobotPane.margin - dia);
 		pos = new PVector(x , y);
@@ -72,16 +93,21 @@ public abstract class Machine {
 		lightOn = false;
 		robotArea = new Area();
 		timerLight = 0;
+		timerEscape = 0;
 		color = RobotPane.green;
 		dustTarget = null;
 		hunt = true;
 		reTarget = false;
 		collectCount = 0;
-		currentBehaviourState = BehaviourState.HUNTING;
+		currentBehaviourState = BehaviourState.SEARCHING;
+		currentEnergyState = EnergyState.NORMAL;
+		energy = 1000;
+		fullEnergy = 1000;
+		engGainRatio = 100;                   //Energy gained per food size unit 
+		engLossRatio = fullEnergy/(30*15);
 		setShapes();
 	}
 	
-
 	protected void setShapes() {
 		float sCof = 0.15f;
 		sight = width * maxSpeed/2 * sCof;
@@ -202,6 +228,7 @@ public abstract class Machine {
 		    String txtTargetId = "target " + targetId;
 		    String txtReTarget = "reTarget " + reTarget;
 		    String txtCollect = "collect " + collectCount;
+		    String txtEnergy = "energy " + energy;
 		    
 	    	g.drawString(txtScale, pos.x, pos.y);
 		    g.drawString(txtSpeed, pos.x, pos.y+15);
@@ -211,42 +238,31 @@ public abstract class Machine {
 		    g.drawString(txtTargetId, pos.x, pos.y+75);
 		    g.drawString(txtReTarget, pos.x, pos.y+90);
 		    g.drawString(txtCollect, pos.x, pos.y+105);
+		    g.drawString(txtEnergy, pos.x, pos.y+120);
+
 	    }
    
 	}
 	
-	
+	/*
 	public void move(Dimension panelSize, PVector f) {
 
 		f.limit(0.3f);//Steering force
 		speed.add(f);//combined force
 		speed.limit(maxSpeed);
 		pos.add(speed);
-		
-		//if (hunt) pos.setMag(maxSpeed);
-		
 		collisionValidate(panelSize);
-
 		reset(panelSize);//if out of bounds, reset to center
-		
-		//System.out.println(pos);
+		energy -= engLossRatio;
+
 	}
+	*/
 	
+	public abstract void move(Dimension panelSize, PVector f);
+	public abstract void move(PVector f);
 	
 	protected Rectangle2D getBounds() {
 		return getBoundary().getBounds2D();
-	  
-	}
-	
-	//returns outline
-	public Shape getBoundary() {
-		AffineTransform at = new AffineTransform();
-		at.translate(pos.x, pos.y);
-	    at.rotate(theta);
-		at.rotate(speed.heading());
-		at.scale(scale, scale);
-		if (speed.x < 0) at.scale(-1, 1);
-		return at.createTransformedShape(robotArea);
 	}
 	
 	public PVector seen(Machine r) {
@@ -258,10 +274,7 @@ public abstract class Machine {
 		Shape FOVOutline = getFOV();
 		Shape robotOutline = r.getBoundary();
 		Shape myOutline = getBoundary();
-		
-		
 		PVector forceVector = new PVector(0, 0);
-		
 		
 		//intersects
 		if (FOVOutline.intersects(robotBound) || myOutline.intersects(robotBound) || robotOutline.intersects(myBound)) {
@@ -285,16 +298,14 @@ public abstract class Machine {
 			}
 
 		}
-			
 		return forceVector;
-		
-	    
-		
-	
 	}
 	
+	//Abstract methods
 	//target collision
 	protected abstract boolean targetCollisionCheck(Object target);
+	//approach targets
+	public abstract boolean approach();
 	
 	//wall collision
 	protected void collisionValidate(Dimension panelSize) {
@@ -311,29 +322,22 @@ public abstract class Machine {
 	    if (bnd.intersects(bottom) && speed.y > 0) speed.y *= -1;
 	    
 	}
+
+	//Helper to handle transitions cleanly
+	protected void transitionTo(BehaviourState newState) {
+	    currentBehaviourState = newState;
+	    timerEscape = 0;
+	    timerAvoid = 0;
 	
-	public abstract boolean approach();
-	
-	protected Shape getFOV() {
-		AffineTransform at = new AffineTransform();
-		at.translate(pos.x, pos.y);
-		at.rotate(theta);
-		at.rotate(speed.heading());
-		at.scale(scale, scale);
-		if (speed.x < 0) {
-		    at.scale(-1, 1); // flip
-		}
-		return at.createTransformedShape(fov);
+	    //synchronize legacy variables
+	    this.hunt = (newState == BehaviourState.HUNTING);
+	    
+	    //update visual feedback
+	    if (newState == BehaviourState.HUNTING) color = RobotPane.green;
 	}
 	
 	protected void reset(Dimension panelSize) {
-		Rectangle2D panelBounds =
-			    new Rectangle2D.Double(
-			        0,
-			        0,
-			        panelSize.width,
-			        panelSize.height
-			    );
+		Rectangle2D panelBounds = new Rectangle2D.Double(0, 0, panelSize.width, panelSize.height);
 
 			if (!panelBounds.contains(getBounds())) {
 			    pos.set(panelSize.width / 2f, panelSize.height / 2f);
@@ -349,8 +353,41 @@ public abstract class Machine {
 		robotArea.add(new Area(outer));
 	}
 
+	// method for drawing traces after avatar was killed
+	public void drawWaves(Graphics2D g2) {
+		AffineTransform at = g2.getTransform();
+		g2.translate(pos.x, pos.y);
+
+		for (int i = 1; i <= 3; i++) {
+			g2.scale(i, i);
+			g2.draw(new Ellipse2D.Double(-dia / 2, -dia / 2, dia, dia));
+		}
+		g2.setTransform(at);
+	}
 	
 	//getter, setter
+	//returns outline
+	public Shape getBoundary() {
+		AffineTransform at = new AffineTransform();
+		at.translate(pos.x, pos.y);
+	    at.rotate(theta);
+		at.rotate(speed.heading());
+		at.scale(scale, scale);
+		if (speed.x < 0) at.scale(-1, 1);
+		return at.createTransformedShape(robotArea);
+	}
+	protected Shape getFOV() {
+		AffineTransform at = new AffineTransform();
+		at.translate(pos.x, pos.y);
+		at.rotate(theta);
+		at.rotate(speed.heading());
+		at.scale(scale, scale);
+		if (speed.x < 0) {
+		    at.scale(-1, 1); // flip
+		}
+		return at.createTransformedShape(fov);
+	}
+	
 	protected int getId() {
 		return id;
 	}
@@ -365,6 +402,10 @@ public abstract class Machine {
 	
 	public double getScale() {
 		return scale;
+	}
+	
+	public double getSize() {
+		return scale * dia;
 	}
 	
 	public int getDia() {

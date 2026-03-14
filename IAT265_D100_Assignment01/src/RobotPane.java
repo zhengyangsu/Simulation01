@@ -11,19 +11,21 @@ import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
 import javax.swing.JPanel;
 import javax.swing.Timer;
-
 import processing.core.PVector;
 
 
 @SuppressWarnings("serial")
 public class RobotPane extends JPanel implements ActionListener{
 	
+	//region
 	public final static int paneWidth = 1200;
 	public final static int paneHight = 800;
 	public final static int margin = 50;
@@ -38,11 +40,15 @@ public class RobotPane extends JPanel implements ActionListener{
 	private int pileCount;
 	private ArrayList<Machine> machines;
 	private ArrayList<DustPile> piles;
+	private Machine hunter;
 	private Room room;
 	private int fps = 24;
 	private Timer t;
 	private Shape infoButton;
 	boolean showInfo;
+	private boolean up, down;
+	//endregion
+	
 	//private int pileTimer; // custom timer used to generate a seed after 5 seconds
 
 	
@@ -51,6 +57,8 @@ public class RobotPane extends JPanel implements ActionListener{
 		this.setPreferredSize(new Dimension(width, hight));
 		this.setBackground(Color.BLACK);
 		this.addMouseListener(new MyMouseAdapter());
+		this.addKeyListener(new MyKeyListener());
+		setFocusable(true);
 		
 		machineCount = 2;
 		robotCount = 1;
@@ -68,8 +76,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	        RenderingHints.KEY_ANTIALIASING,
 	        RenderingHints.VALUE_ANTIALIAS_ON
 	    );
-	    
-	    
+	       
 	    infoButton = new Ellipse2D.Double(margin/4, margin/4, margin/2, margin/2);
 	    g2.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
 	    
@@ -83,6 +90,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	    String txtShowInfo = "Debug " + showInfo;
 	    g.drawString(txtShowInfo, margin/4 + margin, margin/4 + 20);
 	    
+	    if (room != null) room.drawRoom(g2, getSize());
 	    
 	    if (piles != null) for (DustPile dust : piles) {
 		    dust.drawDustPile(g2);
@@ -95,7 +103,8 @@ public class RobotPane extends JPanel implements ActionListener{
 	    	}
 	    }
 	    
-	    if (room != null) room.drawRoom(g2, getSize());
+	    hunter.draw(g2);
+	    
 	    //drawCounter(g2);
 	    
 	    
@@ -107,11 +116,16 @@ public class RobotPane extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent arg0) {
 		// TODO Auto-generated method stub
 		
-		 //Target acquisition
+		//Target acquisition
 	    if (piles != null) {
 	        targetAquisition();
 	    }
 
+	    // move hunter based on keypressed
+	 	if (up) hunter.move(new PVector(0, -4));
+	 	if (down) hunter.move(new PVector(0, 4));
+	    
+	 	
 	    //Compute forces and move robots
 	    for (Machine m : machines) {
 
@@ -126,7 +140,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	        m.move(getSize(), totalForce);
 	    }
 
-	  //Resolve robot hunting AFTER movement
+	    //Resolve robot hunting after movement
 	    ArrayList<Robot> toRemoveRobot = new ArrayList<>();
 	    for (Machine m : machines) {
 	        if (m.approach() && m instanceof HunterBot) {
@@ -141,7 +155,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	        }
 	    }
 	    
-	    //Resolve dust collection AFTER movement
+	    //Resolve dust collection after movement
 	    ArrayList<DustPile> toRemoveDust = new ArrayList<>();
 	    for (Machine m : machines) {
 	        if (m instanceof Robot && !toRemoveRobot.contains(m)) {
@@ -159,7 +173,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	        }
 	    }
 
-	  //remove hunted robots
+	    //remove hunted robots
 	    if (!toRemoveRobot.isEmpty()) {
 	        for (Machine m : machines) {
 	            if (m instanceof HunterBot) {
@@ -177,7 +191,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	        machines.removeAll(toRemoveRobot);
 	    }
 	    
-
+	    //remove collected dust
 	    if (!toRemoveDust.isEmpty()) {
 	        for (Machine m : machines) {
 	        	if (m instanceof Robot) {
@@ -194,6 +208,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	        }
 	        piles.removeAll(toRemoveDust);
 	    }
+	    
 	    repaint();
 	}
 	
@@ -229,12 +244,45 @@ public class RobotPane extends JPanel implements ActionListener{
 	    }
 	}
 	
+	public class MyKeyListener extends KeyAdapter {
+		@Override
+		public void keyPressed(KeyEvent e) {
+			if (e.getKeyCode() == KeyEvent.VK_UP) {
+				up = true;
+				down = !up;
+				//System.out.println("pressed up");
+			}
+				
+				
+			if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+				down = true;
+				up = !down;
+				//System.out.println("pressed down");
+			}
+				
+		}
+
+		@Override
+		public void keyReleased(KeyEvent e) {
+			if (e.getKeyCode() == KeyEvent.VK_UP) {
+				up = false;
+				
+			}
+				
+			if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+				down = false;
+			}
+				
+		}
+	}
 	
 	//class methods
 	public void simulationBegin() {
 		
 		showInfo = false;
 		piles = new ArrayList<DustPile>();
+		hunter = new Hunter(getSize(), 1000);
+		requestFocusInWindow();
 		for (int i = 0; i < pileCount; i++) piles.add(new DustPile(getSize()));
 		
 		machines = new ArrayList<Machine>();
@@ -242,6 +290,8 @@ public class RobotPane extends JPanel implements ActionListener{
 			if (i < robotCount)machines.add(new Robot(getSize(), i));
 			else machines.add(new HunterBot(getSize(), i));
 		}
+		
+		//machines.add(new Hunter(getSize(), 1000));
 		
 		room = new Room(getSize());
 		t = new Timer(1000/fps, this);
