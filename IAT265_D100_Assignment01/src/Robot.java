@@ -285,11 +285,7 @@ public class Robot extends Machine{
 		return normal;
 	}
 
-	@Override
-	public void move(PVector f) {
-		// TODO Auto-generated method stub
-		
-	}
+
 	
 	
 }

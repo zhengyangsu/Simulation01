@@ -195,10 +195,4 @@ public class HunterBot extends Machine{
 		return robotTarget;
 	}
 
-
-	@Override
-	public void move(PVector f) {
-		// TODO Auto-generated method stub
-		
-	}
 }

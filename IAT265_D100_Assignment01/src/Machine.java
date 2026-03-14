@@ -19,41 +19,19 @@ public abstract class Machine {
 	
 	//properties fields
 	//region
-	protected int width;
-	protected int height;
 	protected PVector pos, speed;
-	protected float maxSpeed;
-	protected int dia;
-	protected int id;
-	protected int targetId;
+	protected float maxSpeed, sight;
+	protected int width, height, dia, id, targetId, collectCount, timerAvoid, timerLight, timerEscape;
 	protected Color color;
 	protected Random dice = new Random();
-	protected double scale;
-	protected double theta;
-	protected boolean lightOn;
-	protected boolean hunt;
-	protected boolean seen;
-	protected boolean reTarget;
-	protected boolean displayInfo;
-	protected int collectCount;
-	protected int timerAvoid;
-	protected int timerLight;
-	protected int timerEscape;
+	protected double scale, theta;
+	protected boolean lightOn, hunt, seen, reTarget, displayInfo;
 	protected DustPile dustTarget;
 	protected ArrayList<DustPile> targets;
-	protected float sight;
-	protected Shape outer;
-	protected Shape inner;
-	protected Shape button;
-	protected Shape panelArc;
-	protected Shape panelLineL;
-	protected Shape panelLineR;
+	protected Shape outer, inner, button, panelArc, panelLineL, panelLineR, eye, browL, browR, fov;
 	protected Path2D face;
-	protected Shape eye;
-	protected Shape browL;
-	protected Shape browR;
-	protected Shape fov; //field-of-view
 	protected Area robotArea;
+	protected Dimension dim;
 	
 	protected enum BehaviourState {
 	    HUNTING,    // searching for and moving toward Robot
@@ -70,8 +48,7 @@ public abstract class Machine {
 		DEAD
 	}
 	protected EnergyState currentEnergyState;
-	protected int energy;
-	protected int fullEnergy;
+	protected int energy, fullEnergy;
 	protected float engGainRatio = 100;                   //Energy gained per food size unit 
 	protected float engLossRatio = fullEnergy/(30*15);    //Energy loss per frame
 	//endregion
@@ -79,6 +56,7 @@ public abstract class Machine {
 	//constructor
 	public Machine(Dimension dim, int id) {
 		this.id = id;
+		this.dim = dim;
 		dia = 70;
 		scale = dice.nextDouble(0.6, 1);
 		maxSpeed = 2;
@@ -244,22 +222,7 @@ public abstract class Machine {
    
 	}
 	
-	/*
-	public void move(Dimension panelSize, PVector f) {
-
-		f.limit(0.3f);//Steering force
-		speed.add(f);//combined force
-		speed.limit(maxSpeed);
-		pos.add(speed);
-		collisionValidate(panelSize);
-		reset(panelSize);//if out of bounds, reset to center
-		energy -= engLossRatio;
-
-	}
-	*/
-	
 	public abstract void move(Dimension panelSize, PVector f);
-	public abstract void move(PVector f);
 	
 	protected Rectangle2D getBounds() {
 		return getBoundary().getBounds2D();
@@ -376,6 +339,7 @@ public abstract class Machine {
 		if (speed.x < 0) at.scale(-1, 1);
 		return at.createTransformedShape(robotArea);
 	}
+	
 	protected Shape getFOV() {
 		AffineTransform at = new AffineTransform();
 		at.translate(pos.x, pos.y);
@@ -410,6 +374,11 @@ public abstract class Machine {
 	
 	public int getDia() {
 		return dia;
+	}
+
+	public void setShape() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

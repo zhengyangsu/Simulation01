@@ -26,27 +26,19 @@ import processing.core.PVector;
 public class RobotPane extends JPanel implements ActionListener{
 	
 	//region
-	public final static int paneWidth = 1200;
-	public final static int paneHight = 800;
-	public final static int margin = 50;
-	public final static Color green = new Color(0, 255, 65);
-	public final static Color amber = new Color(255, 140, 0);
+	public final static int paneWidth = 1200, paneHight = 800, margin = 50;
+	public final static Color green = new Color(0, 255, 65), amber = new Color(255, 140, 0);
 	public static float stroke = 2;
-	private int width = paneWidth - 2* margin - (int)stroke;
-	private int hight = paneHight - 2* margin - (int)stroke;
+	private int width = paneWidth - 2* margin - (int)stroke, hight = paneHight - 2* margin - (int)stroke, fps = 24;
 	private static int count = 0;
-	private int machineCount;
-	private int robotCount;
-	private int pileCount;
+	private int machineCount, robotCount, pileCount;
 	private ArrayList<Machine> machines;
 	private ArrayList<DustPile> piles;
-	private Machine hunter;
+	private Hunter hunter;
 	private Room room;
-	private int fps = 24;
 	private Timer t;
 	private Shape infoButton;
-	boolean showInfo;
-	private boolean up, down;
+	private boolean showInfo, space;
 	//endregion
 	
 	//private int pileTimer; // custom timer used to generate a seed after 5 seconds
@@ -63,7 +55,6 @@ public class RobotPane extends JPanel implements ActionListener{
 		machineCount = 2;
 		robotCount = 1;
 		pileCount = machineCount*2;
-		//pileCount = 0;
 				
 	}
 	
@@ -121,10 +112,12 @@ public class RobotPane extends JPanel implements ActionListener{
 	        targetAquisition();
 	    }
 
-	    // move hunter based on keypressed
-	 	if (up) hunter.move(new PVector(0, -4));
-	 	if (down) hunter.move(new PVector(0, 4));
-	    
+	  //hunter action
+	    hunter.targetAquire(machines);
+	 	hunter.autoMove();
+	 	hunter.move(getSize(), null);
+	    hunter.collisionValidate(getSize());
+	    if(space ==true) hunter.fire();
 	 	
 	    //Compute forces and move robots
 	    for (Machine m : machines) {
@@ -247,32 +240,19 @@ public class RobotPane extends JPanel implements ActionListener{
 	public class MyKeyListener extends KeyAdapter {
 		@Override
 		public void keyPressed(KeyEvent e) {
-			if (e.getKeyCode() == KeyEvent.VK_UP) {
-				up = true;
-				down = !up;
-				//System.out.println("pressed up");
-			}
-				
-				
-			if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-				down = true;
-				up = !down;
-				//System.out.println("pressed down");
+			if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+				space = true;
+				//System.out.println("pressed space");
 			}
 				
 		}
 
 		@Override
 		public void keyReleased(KeyEvent e) {
-			if (e.getKeyCode() == KeyEvent.VK_UP) {
-				up = false;
-				
+			if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+				space = false;
+				//System.out.println("released space");
 			}
-				
-			if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-				down = false;
-			}
-				
 		}
 	}
 	
@@ -282,7 +262,9 @@ public class RobotPane extends JPanel implements ActionListener{
 		showInfo = false;
 		piles = new ArrayList<DustPile>();
 		hunter = new Hunter(getSize(), 1000);
+		
 		requestFocusInWindow();
+		
 		for (int i = 0; i < pileCount; i++) piles.add(new DustPile(getSize()));
 		
 		machines = new ArrayList<Machine>();
