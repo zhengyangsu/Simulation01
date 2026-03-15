@@ -14,36 +14,37 @@ import processing.core.PVector;
 
 public class Hunter extends Machine{
 	
-	private int health;
+	private int health, missileCount;
 	private Path2D body;
 	private Shape turret, scanner, cannon;
 	private double spinAngle, mid, point, cannonLength, cannonWidth, r;
 	private ArrayList<Missile> missiles;
-	private ArrayList<HunterBot> targets;
+	private ArrayList<HunterBot> targets, lockedTargets;
 	private HunterBot target;
-	private Missile m;
+	private boolean active;
 	
 	public Hunter(Dimension dim, int id) {
 		super(dim, id);
 		this.theta = 90;
 		this.scale = 1;
 		health = 100;
+		missileCount = 6;
 		point = 45;
 		mid = 30;
 		pos = new PVector(RobotPane.margin, RobotPane.margin);
 		color = Color.red;
 		spinAngle = 3 * Math.PI/2;
-		speed = new PVector(0,4);
+		vel = new PVector(0,4);
 		cannonLength = 40;
 		cannonWidth = 8;
 		r = 10;//turret radius
-		
 		targets = new ArrayList<>();
-		m = new Missile(pos.x - 45, pos.y, dim, id);
+		lockedTargets = new ArrayList<>();
+		missiles = new ArrayList<>();
+		active = true;
+		
 		setShape();
-		
-		
-		
+		loadMissiles();
 	}
 
 	
@@ -72,9 +73,10 @@ public class Hunter extends Machine{
 	
 	@Override
 	public void draw(Graphics2D g) {
+		drawMissiles(g);
+		
 		AffineTransform af = g.getTransform();
 		g.translate(pos.x + 45/2, pos.y); // move robot origin to pos
-
 		//draw body
 		g.setColor(Color.BLACK);
 		g.fill(body);
@@ -121,18 +123,33 @@ public class Hunter extends Machine{
 		spinAngle += 2 * Math.PI / 33;
 		spinAngle %= 2 * Math.PI;
 		
-		m.draw(g);
-		g.draw(getBoundary().getBounds2D());
+		//g.draw(getBoundary().getBounds2D());
 		
 	}
 	
-	public void autoMove() {
-		pos.add(speed);
-	}
-	
+
 	public void fire() {
 		//System.out.println("fired");
-    	m.autoTarget(target);
+		double minDist = Double.MAX_VALUE;
+		
+		for (HunterBot t : targets) {
+			double tempDist = PVector.dist(t.getPos(), pos);
+			if (tempDist < minDist) {
+				minDist = tempDist;
+				target = (HunterBot) t;
+			}
+		}
+		
+    	for (Missile m : missiles) {
+    		
+    		if (!lockedTargets.contains(target) && !m.getFired()) {
+				m.setTarget(target);
+				lockedTargets.add(target);
+				System.out.println("target set " + target);
+    			m.setFired();
+    			break;
+    		}
+    	}
     }
 	
 	@Override
@@ -155,30 +172,58 @@ public class Hunter extends Machine{
 	}
 
 	@Override
-	public void move(Dimension panelSize, PVector f) {
+	public void move(Dimension dim, PVector f) {
 		// TODO Auto-generated method stub
-		m.autoTarget(target);
-		m.move(panelSize, f);
+		for (int i = missiles.size() - 1 ; i >= 0; i--) {
+			Missile m = missiles.get(i);
+			if (m.getFired() && m.approach()) {
+				HunterBot hit = m.getTarget();
+				targets.remove(hit);
+				lockedTargets.remove(hit);
+				missiles.remove(m);
+				m = null;
+				hit.kill();
+			}
+		}
+		
+		pos.add(vel);
+		moveMissiles(dim, pos);
 	}
 	
 	public void targetAquire(ArrayList<Machine> targets) {
 		
 		for (Machine m : targets) {
 			if (m instanceof HunterBot) {
-				this.targets.add((HunterBot) m);
+				this.targets.add((HunterBot) m);	
 			}
 		}
+		//System.out.println("target aqquired " + targets.size());
+	}
+	
+	private void loadMissiles() {
 		
-		double minDist = Double.MAX_VALUE;
-		for (HunterBot h : this.targets) {
-			double tempDist = PVector.dist(h.getPos(), pos);
-			if (tempDist < minDist) {
-				minDist = tempDist;
-				target = h;
-			}
+		for(int i = 0; i < missileCount; i++) {
+			missiles.add(new Missile(pos.x , pos.y, dim, i));
 		}
 		
 	}
 	
+	private void drawMissiles(Graphics2D g) {
+		
+		for(Missile m : missiles) {
+			//m.drawWaves(g);
+			m.draw(g);
+		}
+	}
 
+	private void moveMissiles(Dimension dim, PVector pos) {
+		for (Missile m : missiles) {
+			
+			m.move(dim, pos);
+		}
+	}
+	
+	public boolean isActive() {
+		return active;
+	}
 }

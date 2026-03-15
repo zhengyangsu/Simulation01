@@ -1,7 +1,9 @@
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Shape;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Area;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import processing.core.PVector;
@@ -11,6 +13,7 @@ public class Missile extends Machine{
 	    private Path2D missileHead;       // keep head as Path2D
 	    private PVector pos, speed;
 	    private HunterBot target;
+	    private boolean fired;
 	    
 	    
 	    // Dimensions
@@ -21,6 +24,7 @@ public class Missile extends Machine{
 	    	super(dim, id);
 	        pos = new PVector((float) startX, (float) startY);
 	        speed = new PVector(0, 0);
+	        maxSpeed = 10;
 	        mLength = 30;
 		    mWidth = 6;
 		    wingWidth = 8;
@@ -28,32 +32,41 @@ public class Missile extends Machine{
 		    tailWidth = 6;
 		    tailHeight = 10;
 		    target = null;
+		    fired = false;
 	        setShape();
 	    }
 
 	    @Override
 	    public void setShape() {
-	        // Body relative to (0,0)
+		    robotArea = new Area();
+
+	        //body 
 	        missileBody = new Rectangle2D.Double(0, -mWidth/2, mLength, mWidth);
 
-	        // Wing: rectangle for simplicity
+	        //wing 
 	        missileWing = new Rectangle2D.Double(mLength/2, -wingHeight/2, wingWidth, wingHeight);
 
-	        // Tail: rectangle for simplicity
+	        //tail 
 	        missileTail = new Rectangle2D.Double(-tailWidth, -tailHeight/2, tailWidth, tailHeight);
 
-	        // Head: triangle
+	        //head 
 	        missileHead = new Path2D.Double();
 	        missileHead.moveTo(mLength, -mWidth/2);
 	        missileHead.lineTo(mLength, mWidth/2);
 	        missileHead.lineTo(mLength + 8, 0);
 	        missileHead.closePath();
+	        
+	        robotArea.add(new Area(missileBody));
+	        robotArea.add(new Area(missileWing));
+	        robotArea.add(new Area(missileTail));
+	        robotArea.add(new Area(missileHead));
+
 	    }
 
 	    public void draw(Graphics2D g) {
 	        AffineTransform af = g.getTransform();
 
-	        // Translate to missile position
+	        //translate to missile position
 	        g.translate(pos.x, pos.y);
 	        g.rotate(speed.heading());
 	        
@@ -66,41 +79,66 @@ public class Missile extends Machine{
 	        g.setTransform(af);
 	    }
 	    
-	    public void autoTarget(HunterBot t) {
+	    public void setTarget(HunterBot t) {
 	    	target = t;
-	    	PVector dir = PVector.sub(target.getPos(), pos); // direction to target
-			speed = dir.normalize();
-			//speed.setMag(maxSpeed);
-			System.out.println(speed);
-
-			pos.add(speed);
-			//System.out.println(speed);
-			//System.out.println(pos);
-
 	    }
 	    
-	    public boolean collisionCheck() {
-	    	
-			return false;
-	    	
+	    public void setFired() {
+	    	fired = true;
 	    }
+	    
+	    public boolean getFired() {
+	    	return fired;
+	    }
+	    
+
 
 		@Override
 		public void move(Dimension panelSize, PVector f) {
 			// TODO Auto-generated method stub
+			 if (!fired) {
+			        // stick to hunter until fired
+			        pos.x = f.x;
+			        pos.y = f.y;
+			    } 
+			
 			pos.add(speed);
 		}
 
 		@Override
 		protected boolean targetCollisionCheck(Object target) {
 			// TODO Auto-generated method stub
-			return false;
+			boolean collision = false;
+			
+			collision = (getBoundary().intersects(this.target.getBoundary().getBounds2D()) && this.target.getBoundary().intersects(getBoundary().getBounds2D()));
+
+			return collision;
 		}
 
 		@Override
 		public boolean approach() {
 			// TODO Auto-generated method stub
-			return false;
+			boolean reach = false;
+	    	PVector path = PVector.sub(this.target.getPos(), pos); // direction to target
+			speed = path.copy().normalize();
+			speed.setMag(maxSpeed);
+			
+			if (targetCollisionCheck(target) && path.mag() - mLength / 2 <= 0 ) {
+				reach = true;
+			}
+			
+			return reach;
 		}
 	    
+		public HunterBot getTarget() {
+			return target;
+		}
+		
+		@Override
+		public Shape getBoundary() {
+			AffineTransform at = new AffineTransform();
+			at.translate(pos.x, pos.y);
+	        at.rotate(speed.heading());
+			return at.createTransformedShape(robotArea);
+		}
 	}

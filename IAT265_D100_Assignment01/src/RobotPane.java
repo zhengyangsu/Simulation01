@@ -94,7 +94,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	    	}
 	    }
 	    
-	    hunter.draw(g2);
+	    if (hunter.isActive()) hunter.draw(g2);
 	    
 	    //drawCounter(g2);
 	    
@@ -112,12 +112,12 @@ public class RobotPane extends JPanel implements ActionListener{
 	        targetAquisition();
 	    }
 
-	  //hunter action
-	    hunter.targetAquire(machines);
-	 	hunter.autoMove();
-	 	hunter.move(getSize(), null);
-	    hunter.collisionValidate(getSize());
-	    if(space ==true) hunter.fire();
+	    //hunter action
+	    if (hunter.isActive()) {
+		 	hunter.move(getSize(), null);
+		    hunter.collisionValidate(getSize());
+		    if(space ==true) hunter.fire();
+	    }
 	 	
 	    //Compute forces and move robots
 	    for (Machine m : machines) {
@@ -165,7 +165,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	            
 	        }
 	    }
-
+	    
 	    //remove hunted robots
 	    if (!toRemoveRobot.isEmpty()) {
 	        for (Machine m : machines) {
@@ -273,17 +273,13 @@ public class RobotPane extends JPanel implements ActionListener{
 			else machines.add(new HunterBot(getSize(), i));
 		}
 		
-		//machines.add(new Hunter(getSize(), 1000));
+		hunter.targetAquire(machines);
 		
 		room = new Room(getSize());
 		t = new Timer(1000/fps, this);
 		t.start();
 		
 	}
-	
-	
-	
-	
 	
 	//pass the designated pile to the corresponding robot
 	private void targetAquisition() {

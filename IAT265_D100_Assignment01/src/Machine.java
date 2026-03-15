@@ -19,13 +19,13 @@ public abstract class Machine {
 	
 	//properties fields
 	//region
-	protected PVector pos, speed;
+	protected PVector pos, vel;
 	protected float maxSpeed, sight;
 	protected int width, height, dia, id, targetId, collectCount, timerAvoid, timerLight, timerEscape;
 	protected Color color;
 	protected Random dice = new Random();
 	protected double scale, theta;
-	protected boolean lightOn, hunt, seen, reTarget, displayInfo;
+	protected boolean lightOn, hunt, seen, reTarget, displayInfo, dead;
 	protected DustPile dustTarget;
 	protected ArrayList<DustPile> targets;
 	protected Shape outer, inner, button, panelArc, panelLineL, panelLineR, eye, browL, browR, fov;
@@ -37,8 +37,7 @@ public abstract class Machine {
 	    HUNTING,    // searching for and moving toward Robot
 	    ESCAPING,   //high-speed flight from a HunterBot
 	    AVOIDING,    // brief cooldown after interacting with another Hunter
-	    SEARCHING
-	    
+	    SEARCHING	    
 	}
 	protected BehaviourState currentBehaviourState;
 	
@@ -65,8 +64,8 @@ public abstract class Machine {
 		float x = (float)dice.nextDouble(RobotPane.margin + dia, dim.width - RobotPane.margin - dia);
 		float y = (float)dice.nextDouble(RobotPane.margin + dia, dim.height - RobotPane.margin - dia);
 		pos = new PVector(x , y);
-		speed = new PVector(dice.nextInt(1, 10), dice.nextInt(1, 10));
-		speed.limit(maxSpeed);
+		vel = new PVector(dice.nextInt(1, 10), dice.nextInt(1, 10));
+		vel.limit(maxSpeed);
 		theta = Math.toRadians(90);
 		lightOn = false;
 		robotArea = new Area();
@@ -83,6 +82,7 @@ public abstract class Machine {
 		fullEnergy = 1000;
 		engGainRatio = 100;                   //Energy gained per food size unit 
 		engLossRatio = fullEnergy/(30*15);
+		dead = false;
 		setShapes();
 	}
 	
@@ -127,29 +127,30 @@ public abstract class Machine {
 	}
 	
 	public void draw(Graphics2D g) {
-
+		
 		AffineTransform af = g.getTransform();
 		
 		g.setColor(color);
 		g.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
 		
 		//transform stack
+		
+		
 		g.translate(pos.x, pos.y);
 		g.rotate(theta);
-		g.rotate(speed.heading());
+		g.rotate(vel.heading());
 		g.scale(scale, scale);
-		if (speed.x < 0) {
+		if (vel.x < 0) {
 		    g.scale(-1, 1); // flip
 		}
 
+		
+		
 		// outer circle
 		g.setColor(Color.BLACK);
 		g.fill(outer);
 		g.setColor(color);
 		g.draw(outer);
-		
-		//fov
-		//g.draw(fov);
 		
 		// inner circle
 		g.draw(inner);
@@ -182,6 +183,12 @@ public abstract class Machine {
 		g.draw(browL);
 		g.draw(browR);
 
+		if (currentEnergyState == EnergyState.DEAD) {
+	  		drawWaves(g);
+			//g.draw(new Ellipse2D.Double(-dia/2, -dia/2, dia, dia));
+
+	    }
+		
 		//robot area outline
 		g.setColor(RobotPane.amber);
 		//robotArea.add(new Area(outer));
@@ -198,7 +205,7 @@ public abstract class Machine {
 			g.setColor(Color.WHITE);
 		    g.setFont(new Font("Monospaced", Font.BOLD, 16));
 		    String txtScale = "Scale " + String.format("%.2f", scale);
-		    String txtSpeed = "Speed "+ String.format("%.2f", speed.mag());
+		    String txtSpeed = "Speed "+ String.format("%.2f", vel.mag());
 		    String txtID = "ID " + id;
 		    String txtHunt = "Hunt " + hunt;
 		    String txtSeen = "Seen " + seen;
@@ -220,6 +227,8 @@ public abstract class Machine {
 
 	    }
    
+	    
+	    
 	}
 	
 	public abstract void move(Dimension panelSize, PVector f);
@@ -279,10 +288,10 @@ public abstract class Machine {
 	    Rectangle2D.Double left = new Rectangle2D.Double(0, 0, RobotPane.margin, panelSize.height);
 	    Rectangle2D.Double right = new Rectangle2D.Double(panelSize.width - RobotPane.margin, 0, RobotPane.margin, panelSize.height);
 
-	    if (bnd.intersects(left) && speed.x < 0) speed.x *= -1;
-	    if (bnd.intersects(right) && speed.x > 0) speed.x *= -1;
-	    if (bnd.intersects(top) && speed.y < 0) speed.y *= -1;
-	    if (bnd.intersects(bottom) && speed.y > 0) speed.y *= -1;
+	    if (bnd.intersects(left) && vel.x < 0) vel.x *= -1;
+	    if (bnd.intersects(right) && vel.x > 0) vel.x *= -1;
+	    if (bnd.intersects(top) && vel.y < 0) vel.y *= -1;
+	    if (bnd.intersects(bottom) && vel.y > 0) vel.y *= -1;
 	    
 	}
 
@@ -317,15 +326,13 @@ public abstract class Machine {
 	}
 
 	// method for drawing traces after avatar was killed
-	public void drawWaves(Graphics2D g2) {
-		AffineTransform at = g2.getTransform();
-		g2.translate(pos.x, pos.y);
-
+	protected void drawWaves(Graphics2D g) {
+		
 		for (int i = 1; i <= 3; i++) {
-			g2.scale(i, i);
-			g2.draw(new Ellipse2D.Double(-dia / 2, -dia / 2, dia, dia));
+			g.scale(i, i);
+			g.draw(new Ellipse2D.Double( -dia/2, -dia/2, dia, dia));
 		}
-		g2.setTransform(at);
+		
 	}
 	
 	//getter, setter
@@ -334,9 +341,9 @@ public abstract class Machine {
 		AffineTransform at = new AffineTransform();
 		at.translate(pos.x, pos.y);
 	    at.rotate(theta);
-		at.rotate(speed.heading());
+		at.rotate(vel.heading());
 		at.scale(scale, scale);
-		if (speed.x < 0) at.scale(-1, 1);
+		if (vel.x < 0) at.scale(-1, 1);
 		return at.createTransformedShape(robotArea);
 	}
 	
@@ -344,9 +351,9 @@ public abstract class Machine {
 		AffineTransform at = new AffineTransform();
 		at.translate(pos.x, pos.y);
 		at.rotate(theta);
-		at.rotate(speed.heading());
+		at.rotate(vel.heading());
 		at.scale(scale, scale);
-		if (speed.x < 0) {
+		if (vel.x < 0) {
 		    at.scale(-1, 1); // flip
 		}
 		return at.createTransformedShape(fov);
@@ -381,5 +388,13 @@ public abstract class Machine {
 		
 	}
 
+	public void kill() {
+		dead = true;
+		currentEnergyState = EnergyState.DEAD;
+	}
+	
+	public boolean isDead() {
+		return dead;
+	}
 }
 

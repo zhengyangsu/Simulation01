@@ -11,7 +11,6 @@ unique fields enum State - HUNTING, AVOIDING, currentSate and robotTarget
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.geom.Rectangle2D;
-
 import processing.core.PVector;
 
 public class HunterBot extends Machine{
@@ -26,7 +25,6 @@ public class HunterBot extends Machine{
 		setShapes();
 	}
 
-	
 	@Override
 	protected void setShapes() {
 		super.setShapes();
@@ -39,34 +37,25 @@ public class HunterBot extends Machine{
 		areaReset();
 	}
 	
-	
 	@Override
 	public void move(Dimension panelSize, PVector f) {
 		
-		if (energy >= 40) {
-	        currentEnergyState = EnergyState.NORMAL;
-	    } 
-	    else if (energy > 0) {
-	    	currentEnergyState = EnergyState.WEAK;
-	    } 
-	    else {
-	    	currentEnergyState = EnergyState.DEAD;
-	    }
+		
 		
 		//update State Timers
-	    if (currentBehaviourState == BehaviourState.AVOIDING) {
+	    if(currentBehaviourState == BehaviourState.AVOIDING) {
 	        timerAvoid++;
 			color = Color.RED; // Visual feedback for being in AVOIDING state
-			speed.limit(maxSpeed * 2f); 
+			vel.limit(maxSpeed * 2f); 
 	        if (timerAvoid > 40) { // Cooldown period
 	            transitionTo(BehaviourState.HUNTING);
 	    		color = RobotPane.amber;
 	        }
-	    }else if (robotTarget != null) {
-	    	speed.normalize();
-	        speed.mult(3f * maxSpeed);
+	    }else if(robotTarget != null) {
+	    	vel.normalize();
+	        vel.mult(3f * maxSpeed);
 	    }else {
-	    	speed.limit(maxSpeed);
+	    	vel.limit(maxSpeed);
 	    }
 
 	    switch(currentBehaviourState) {
@@ -74,7 +63,7 @@ public class HunterBot extends Machine{
 	    	case AVOIDING:
 	    		timerAvoid++;
 				color = Color.RED; // Visual feedback for being in AVOIDING state
-				speed.limit(maxSpeed * 2f); 
+				vel.limit(maxSpeed * 2f); 
 		        if (timerAvoid > 40) { // Cooldown period
 		            transitionTo(BehaviourState.HUNTING);
 		    		color = RobotPane.amber;
@@ -83,24 +72,38 @@ public class HunterBot extends Machine{
 	    		
 	    	case HUNTING:
 	    		if (robotTarget != null) {
-	    	    	speed.normalize();
-	    	        speed.mult(3f * maxSpeed);
+	    	    	vel.normalize();
+	    	        vel.mult(3f * maxSpeed);
 	    		}
 	    		break;
 	    		
 	    	case SEARCHING:
-	    		speed.setMag(maxSpeed);
+	    		vel.setMag(maxSpeed);
 	    		break;
 	    		
 	    	case ESCAPING:
 	    		break;
-	    	
-	    
 	    }
  
-	    speed.add(f); 
-	    pos.add(speed);
-		energy -= engLossRatio;
+	    if(energy >= 40) {
+	        currentEnergyState = EnergyState.NORMAL;
+	    } 
+	    else if(energy > 0) {
+	    	currentEnergyState = EnergyState.WEAK;
+	    } 
+	    else {
+	    	currentEnergyState = EnergyState.DEAD;
+	    	System.out.println("dead");
+    		color = Color.GRAY;
+    		vel.setMag(0);
+	    }
+	    
+	    if(currentEnergyState != EnergyState.DEAD) {
+	    	vel.add(f); 
+		    pos.add(vel);
+			energy -= engLossRatio;
+	    }
+	    
 	    //collisionValidate(panelSize);
 	    reset(panelSize);
 	}
@@ -153,15 +156,15 @@ public class HunterBot extends Machine{
 	public boolean approach() {
 		
 		if (robotTarget == null) {
-			speed.setMag(maxSpeed);
+			vel.setMag(maxSpeed);
 			return false;		
 		}
 		
 		boolean reach = false;
 
 		PVector path = PVector.sub(robotTarget.getPos(), pos);
-		speed.add(path);
-		speed.normalize();
+		vel.add(path);
+		vel.normalize();
 		//System.out.println("Approaching target at " + robotTarget.getPos() + " with speed " + speed);
 		// check if bug reaches target (targetCollisionCheck(robotTarget) && path.mag() - (scale * dia) / 2 <= 0 )
 		if (targetCollisionCheck(robotTarget) && path.mag() - (scale * dia) / 2 <= 0) {

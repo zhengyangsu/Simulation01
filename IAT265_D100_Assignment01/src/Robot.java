@@ -42,16 +42,15 @@ public class Robot extends Machine{
 	public void draw(Graphics2D g) {
 		
 		AffineTransform af = g.getTransform();
-		
 		g.setColor(color);
 		g.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
 		
 		//transform stack
 		g.translate(pos.x, pos.y);
 		g.rotate(theta);
-		g.rotate(speed.heading());
+		g.rotate(vel.heading());
 		g.scale(scale, scale);
-		if (speed.x < 0) {
+		if (vel.x < 0) {
 		    g.scale(-1, 1); // flip
 		}
 		
@@ -116,9 +115,11 @@ public class Robot extends Machine{
 		
 		if (energy >= 40) {
 	        currentEnergyState = EnergyState.NORMAL;
+	        vel.setMag(maxSpeed);
 	    } 
 	    else if (energy > 0) {
 	    	currentEnergyState = EnergyState.WEAK;
+	    	vel.setMag(maxSpeed/2);
 	    } 
 	    else {
 	    	currentEnergyState = EnergyState.DEAD;
@@ -129,8 +130,8 @@ public class Robot extends Machine{
 		    switch (currentBehaviourState) {
 		        case ESCAPING:
 		            timerEscape++;
-		            speed.add(f); 
-			        speed.limit(maxSpeed * 2.5f);
+		            vel.add(f); 
+			        vel.limit(maxSpeed * 2.5f);
 		            if (timerEscape > 48) {
 		                transitionTo(BehaviourState.SEARCHING);
 		            }
@@ -139,8 +140,8 @@ public class Robot extends Machine{
 		        case AVOIDING:
 		            timerAvoid++;
 		            f.limit(0.8f); 
-			        speed.add(f);
-			        speed.limit(maxSpeed * 1.5f);
+			        vel.add(f);
+			        vel.limit(maxSpeed * 1.5f);
 		            if (timerAvoid > 36) {
 		                transitionTo(BehaviourState.SEARCHING);
 		                color = RobotPane.green;
@@ -150,8 +151,8 @@ public class Robot extends Machine{
 		        case SEARCHING:
 		            // Standard hunting logic (no timer needed)
 		        	f.limit(0.15f); //smooth steering hunting
-			        speed.add(f);
-			        speed.limit(maxSpeed);
+			        vel.add(f);
+			        vel.limit(maxSpeed);
 		            break;
 		            
 		        case HUNTING:
@@ -160,9 +161,9 @@ public class Robot extends Machine{
 		    
 		    updateAnimation(panelSize);
 		    
-		}else speed.mult(0);
+		}else vel.mult(0);
 
-	    pos.add(speed);
+	    pos.add(vel);
 		energy -= engLossRatio;
 	    
 	}
@@ -244,8 +245,8 @@ public class Robot extends Machine{
 			// calculate the path to target point
 			PVector path = PVector.sub(dustTarget.getPos(), pos);
 			path.limit(0.1f);                            // max steering strength
-			speed.add(path);
-			speed.limit(maxSpeed);
+			vel.add(path);
+			vel.limit(maxSpeed);
 			
 			//check if bug reaches target
 			if (targetCollisionCheck(dustTarget) && path.mag() - (scale * dia) / 2 <= 0 ) {
