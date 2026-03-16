@@ -210,7 +210,7 @@ public class Robot extends Machine{
 	            //only transition if we aren't already avoiding, to reset the timer
 	            if (currentBehaviourState != BehaviourState.AVOIDING) {
 	                transitionTo(BehaviourState.AVOIDING);
-	                color = Color.RED;
+	                //color = Color.RED;
 	            }
 
 	            //calculate a weighted repulsion force

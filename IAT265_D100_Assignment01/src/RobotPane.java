@@ -1,3 +1,6 @@
+/*
+ * Turn off Debug mode to hide additional information
+ * */
 
 
 import java.awt.BasicStroke;
@@ -221,15 +224,12 @@ public class RobotPane extends JPanel implements ActionListener{
 	    
 	    repaint();
 	}
-	
-	
-	
 
-	
 	//class methods
 	public void simulationBegin() {
 		
-		showInfo = false;
+		showInfo = true;
+		
 		piles = new ArrayList<DustPile>();
 		hunter = new Hunter(getSize(), 1000);
 		
@@ -244,6 +244,10 @@ public class RobotPane extends JPanel implements ActionListener{
 		}
 			
 		room = new Room(getSize());
+		
+		displayRobotInfo();
+		displayPileInfo();
+		
 		t = new Timer(1000/fps, this);
 		t.start();
 		
@@ -339,7 +343,7 @@ public class RobotPane extends JPanel implements ActionListener{
 			r.displayInfo(showInfo);
 		}
 		
-		hunter.displayInfo(hunterActive);
+		hunter.displayInfo(showInfo);
 	}
 	
 	private void displayPileInfo() {

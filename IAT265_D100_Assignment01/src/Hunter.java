@@ -132,6 +132,7 @@ public class Hunter extends Machine{
 		if (displayInfo) {
 		    displayInfo(g);
 		}
+		
 	}
 	
 
