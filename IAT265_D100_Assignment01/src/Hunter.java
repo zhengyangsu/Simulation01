@@ -1,5 +1,7 @@
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
@@ -21,9 +23,10 @@ public class Hunter extends Machine{
 	private ArrayList<Missile> missiles;
 	private ArrayList<HunterBot> targets, lockedTargets;
 	private HunterBot target;
-	private boolean active;
-	
+	private float forceCoef;
+
 	public Hunter(Dimension dim, int id) {
+		
 		super(dim, id);
 		this.theta = 90;
 		this.scale = 1;
@@ -41,8 +44,7 @@ public class Hunter extends Machine{
 		targets = new ArrayList<>();
 		lockedTargets = new ArrayList<>();
 		missiles = new ArrayList<>();
-		active = true;
-		
+		forceCoef = 25.0f;
 		setShape();
 		loadMissiles();
 	}
@@ -73,6 +75,8 @@ public class Hunter extends Machine{
 	
 	@Override
 	public void draw(Graphics2D g) {
+		infoLines = new String[] {getClass().getName(), "Health: " + String.format("%d", health)};
+
 		drawMissiles(g);
 		
 		AffineTransform af = g.getTransform();
@@ -125,6 +129,9 @@ public class Hunter extends Machine{
 		
 		//g.draw(getBoundary().getBounds2D());
 		
+		if (displayInfo) {
+		    displayInfo(g);
+		}
 	}
 	
 
@@ -145,7 +152,7 @@ public class Hunter extends Machine{
     		if (!lockedTargets.contains(target) && !m.getFired()) {
 				m.setTarget(target);
 				lockedTargets.add(target);
-				System.out.println("target set " + target);
+				//System.out.println("target set " + target);
     			m.setFired();
     			break;
     		}
@@ -192,8 +199,10 @@ public class Hunter extends Machine{
 	
 	public void targetAquire(ArrayList<Machine> targets) {
 		
+		this.targets.clear();
+		
 		for (Machine m : targets) {
-			if (m instanceof HunterBot) {
+			if (m instanceof HunterBot && !m.isDead()) {
 				this.targets.add((HunterBot) m);	
 			}
 		}
@@ -223,7 +232,33 @@ public class Hunter extends Machine{
 		}
 	}
 	
-	public boolean isActive() {
-		return active;
+	public PVector hunterPushForce(Machine r) {
+		
+		PVector force = new PVector();
+		float radius = (float)(r.getDia() * r.getScale() / 2f);
+	    float x = r.getPos().x;
+		int margin = RobotPane.margin;
+	    float minDist = r.getDia() * 1.5f;      // how far robot senses hunter
+	    float safe = 6f;         				// prevents infinite force
+
+
+	    //left
+	    float d = x - margin - radius;
+	    if (d < minDist)
+	        force.x -= forceCoef / Math.max(d, safe);
+
+	    return force;
+	}
+	
+	public void collisionDamage() {
+		health -= 10;
+	}
+	
+	public int getHealth() {
+		return health;
+	}
+
+	public void setHealth(int h) {
+		health = h;
 	}
 }

@@ -29,6 +29,7 @@ public class Robot extends Machine{
 	public Robot(Dimension dim, int id) {
 		super(dim, id);	
 		scale = dice.nextDouble(0.55, 0.65);
+		engGainRatio = 50;
 		setShapes();
 	}
 	
@@ -40,10 +41,20 @@ public class Robot extends Machine{
 	
 	@Override
 	public void draw(Graphics2D g) {
-		
+		infoLines = new String[] {getClass().getName(), currentBehaviourState.name(), currentEnergyState.name(), "Energy " + energy};
 		AffineTransform af = g.getTransform();
 		g.setColor(color);
 		g.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
+		
+		//flicker on weak
+		if (currentEnergyState == EnergyState.WEAK) {
+		    //blink every 12 frames: visible 6 frames, invisible 6 frames
+		    if (timerLight % 12 < 6) {
+		        timerLight++;
+		        return; //skips drawing and exit
+		    }
+		    timerLight++;
+		}
 		
 		//transform stack
 		g.translate(pos.x, pos.y);
@@ -113,17 +124,7 @@ public class Robot extends Machine{
 	@Override
 	public void move(Dimension panelSize, PVector f) {
 		
-		if (energy >= 40) {
-	        currentEnergyState = EnergyState.NORMAL;
-	        vel.setMag(maxSpeed);
-	    } 
-	    else if (energy > 0) {
-	    	currentEnergyState = EnergyState.WEAK;
-	    	vel.setMag(maxSpeed/2);
-	    } 
-	    else {
-	    	currentEnergyState = EnergyState.DEAD;
-	    }
+		checkEnergyLvl();
 		
 	    //update State Timers
 		if (currentEnergyState != EnergyState.DEAD) {
@@ -168,8 +169,6 @@ public class Robot extends Machine{
 	    
 	}
 
-
-
 	private void updateAnimation(Dimension panelSize) {
 	    // Toggle light based on a slower timer, not every frame
 	    if (timerLight % 15 == 0) lightOn = !lightOn;
@@ -193,6 +192,13 @@ public class Robot extends Machine{
 	                        getBoundary().intersects(r.getBounds());
 
 	    if (intersect) {
+	    	
+	    	//hunterBot flee immediately
+	        if (r instanceof Hunter) {
+	            transitionTo(BehaviourState.ESCAPING);
+	            return escape((Hunter)r); 
+	        }
+	    	
 	        //hunterBot flee immediately
 	        if (r instanceof HunterBot) {
 	            transitionTo(BehaviourState.ESCAPING);
@@ -253,8 +259,6 @@ public class Robot extends Machine{
 				reach = true;
 				collectCount++;
 				energy += dustTarget.getSize() * engGainRatio;
-				//System.out.println("Reached target at " + currentTarget.getPos());
-				//speed.mult(0.5f);
 			}
 		}
 		return reach;
@@ -274,20 +278,12 @@ public class Robot extends Machine{
 		return dustTarget;
 	}
 
-	private PVector escape(HunterBot h) {
+	private PVector escape(Machine h) {
 		//System.out.println("Escape from HunterBot " + h.getId());
 		hunt = false;
 		PVector normal = PVector.sub(this.pos, h.pos);
-		//float distance = normal.mag();
-		//normal.normalize();//PVector (target, current position)
-		//float strength = 1.0f / (distance + 1);
-		//PVector escapeVector = normal.copy().mult(strength * maxSpeed); // scale by distance
-		//return escapeVector;
 		return normal;
 	}
 
-
-	
-	
 }
 

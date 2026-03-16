@@ -29,7 +29,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	public final static int paneWidth = 1200, paneHight = 800, margin = 50;
 	public final static Color green = new Color(0, 255, 65), amber = new Color(255, 140, 0);
 	public static float stroke = 2;
-	private int width = paneWidth - 2* margin - (int)stroke, hight = paneHight - 2* margin - (int)stroke, fps = 24;
+	private int width = paneWidth - 2* margin - (int)stroke, hight = paneHight - 2* margin - (int)stroke, fps = 24, timerHunter;
 	private static int count = 0;
 	private int machineCount, robotCount, pileCount;
 	private ArrayList<Machine> machines;
@@ -38,7 +38,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	private Room room;
 	private Timer t;
 	private Shape infoButton;
-	private boolean showInfo, space;
+	private boolean showInfo, space, hunterActive;
 	//endregion
 	
 	//private int pileTimer; // custom timer used to generate a seed after 5 seconds
@@ -52,9 +52,11 @@ public class RobotPane extends JPanel implements ActionListener{
 		this.addKeyListener(new MyKeyListener());
 		setFocusable(true);
 		
-		machineCount = 2;
-		robotCount = 1;
+		machineCount = 18;
+		robotCount = 12;
 		pileCount = machineCount*2;
+		hunterActive = false;
+		timerHunter = 0;
 				
 	}
 	
@@ -94,61 +96,70 @@ public class RobotPane extends JPanel implements ActionListener{
 	    	}
 	    }
 	    
-	    if (hunter.isActive()) hunter.draw(g2);
+	    if (hunterActive) hunter.draw(g2);
 	    
 	    //drawCounter(g2);
-	    
-	    
-	    
 	}
 	
 	
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		// TODO Auto-generated method stub
+		hunterActication();
 		
-		//Target acquisition
+		//target acquisition
 	    if (piles != null) {
 	        targetAquisition();
 	    }
 
 	    //hunter action
-	    if (hunter.isActive()) {
+	    if (hunterActive) {
 		 	hunter.move(getSize(), null);
 		    hunter.collisionValidate(getSize());
 		    if(space ==true) hunter.fire();
 	    }
 	 	
-	    //Compute forces and move robots
+	    //compute forces and move robots
 	    for (Machine m : machines) {
-
+	    	
+	    	//hunterBot and Hunter collision check
+	    	if (m instanceof HunterBot && ((HunterBot) m).hunterCollisionCheck(hunter)) {
+	    		hunter.collisionDamage();
+	    	}
+	    	
 	        PVector totalForce = room.wallPushForce(m).div((float) m.getScale());
-
+	        if (m instanceof Robot) totalForce.add(hunter.hunterPushForce(m));//robot avoid hunter
+	        
+	        //adds room and others forces Robot and HunterBot if alive
 	        for (Machine o : machines) {
-	            if (m != o) {
+	            if (o != m && !o.isDead()) {
 	                totalForce.add(m.seen(o));
 	            }
 	        }
-
-	        m.move(getSize(), totalForce);
+	 
+	        m.move(getSize(), totalForce); //if not dead
+	        
 	    }
-
-	    //Resolve robot hunting after movement
+	    
+	    //resolve hunterBot after destroyed
+	    ArrayList<HunterBot> toRemoveHunterBot = new ArrayList<>();
+	    for (Machine m : machines) {
+	    	if (m instanceof HunterBot && m.isGone()) toRemoveHunterBot.add((HunterBot)m);
+	    }
+	    
+	    //resolve robot hunting after movement
 	    ArrayList<Robot> toRemoveRobot = new ArrayList<>();
 	    for (Machine m : machines) {
-	        if (m.approach() && m instanceof HunterBot) {
+	        if (!m.isDead() && m.approach() && m instanceof HunterBot) {
 	        	HunterBot hunter = (HunterBot) m;
 	            Robot target = (Robot) hunter.getTarget();
 	            if (target != null) {
 	                toRemoveRobot.add(target);
-	                //hunter.setTarget(null);
-	                //System.out.println("Robot " + target.getId() + " hunted by HunterBot " + hunter.getId());
-	                //count++;
 	            }
-	        }
+	        }else if (m instanceof Robot && m.isDead()) toRemoveRobot.add((Robot)m); 
 	    }
 	    
-	    //Resolve dust collection after movement
+	    //resolve dust collection after movement
 	    ArrayList<DustPile> toRemoveDust = new ArrayList<>();
 	    for (Machine m : machines) {
 	        if (m instanceof Robot && !toRemoveRobot.contains(m)) {
@@ -166,6 +177,9 @@ public class RobotPane extends JPanel implements ActionListener{
 	        }
 	    }
 	    
+	    //remove destroyed HunterBot
+	    machines.removeAll(toRemoveHunterBot);
+	    
 	    //remove hunted robots
 	    if (!toRemoveRobot.isEmpty()) {
 	        for (Machine m : machines) {
@@ -178,9 +192,12 @@ public class RobotPane extends JPanel implements ActionListener{
 	            }
 	        }
 	        
+	        /*
+	        //repenish new robots
 	        for(int i = 0; i < toRemoveRobot.size(); i++) {
 	        	machines.add(new Robot(getSize(), machines.size() + i));
 	        }
+	        */
 	        machines.removeAll(toRemoveRobot);
 	    }
 	    
@@ -207,54 +224,7 @@ public class RobotPane extends JPanel implements ActionListener{
 	
 	
 	
-	private class MyMouseAdapter extends MouseAdapter {
-		
-	    public void mouseClicked(MouseEvent e) {
-	    	
-	        //System.out.println(e.toString());
-	    	
-	    	if (e.getClickCount() == 1 && infoButton.contains(getMousePosition())) {
-	    		showInfo = !showInfo;
-	    		displayRobotInfo();
-	    		displayPileInfo();
-	    	} 
-	    	
-	    	if (e.getClickCount() == 2 && room.getBound().contains(getMousePosition())) {
-	    		PVector pos = new PVector(e.getX(), e.getY());
-		        piles.add(new DustPile(pos));
-	    	}
-	    	
-	        for (DustPile pile: piles) {
-		    	if (e.isControlDown() && pile.checkMouseHit(e)) {
-		    		System.out.println("enlarged");
-		    		pile.enlarge();
-		    	}	
-	    		
-	        }
-	    //System.out.println("Pile added in " + pos);
-	    repaint();//have to repaint to show new pile modification
-	
-	    }
-	}
-	
-	public class MyKeyListener extends KeyAdapter {
-		@Override
-		public void keyPressed(KeyEvent e) {
-			if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-				space = true;
-				//System.out.println("pressed space");
-			}
-				
-		}
 
-		@Override
-		public void keyReleased(KeyEvent e) {
-			if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-				space = false;
-				//System.out.println("released space");
-			}
-		}
-	}
 	
 	//class methods
 	public void simulationBegin() {
@@ -272,9 +242,7 @@ public class RobotPane extends JPanel implements ActionListener{
 			if (i < robotCount)machines.add(new Robot(getSize(), i));
 			else machines.add(new HunterBot(getSize(), i));
 		}
-		
-		hunter.targetAquire(machines);
-		
+			
 		room = new Room(getSize());
 		t = new Timer(1000/fps, this);
 		t.start();
@@ -288,7 +256,6 @@ public class RobotPane extends JPanel implements ActionListener{
 		dustTargetAquisition();
 		robotTargetAquisition();
 	}
-	
 	
 	//helpers
 	private void dustTargetAquisition() {
@@ -371,11 +338,124 @@ public class RobotPane extends JPanel implements ActionListener{
 		for (Machine r : machines) {
 			r.displayInfo(showInfo);
 		}
+		
+		hunter.displayInfo(hunterActive);
 	}
 	
 	private void displayPileInfo() {
 		for (DustPile d : piles) {
 			d.displayInfo(showInfo);
+		}
+	}
+	
+	private void reset() {
+		
+		machines.clear();
+		machines = new ArrayList<Machine>();
+		
+		for (int i = 0; i < machineCount; i++) {
+			if (i < robotCount)machines.add(new Robot(getSize(), i));
+			else machines.add(new HunterBot(getSize(), i));
+		}
+		
+		hunterActive = false;
+		hunter = new Hunter(getSize(), 1000);
+	}
+	
+	private void hunterActication() {
+		
+		hunter.targetAquire(machines);
+
+		//resolve hunter
+		if (hunter.getHealth() <= 0) {
+		    hunterActive = false;
+		    
+		    //increment timer while hunter is "dead"
+		    timerHunter++;
+
+		    //respawn after 3 seconds (fps * 3)
+		    if (timerHunter >= fps * 3) {
+		        hunter.setHealth(100);
+		        hunterActive = true;
+		        timerHunter = 0;
+		    }
+		    
+		    return;
+		}
+	    
+		int currentPrey = 0;
+		int currentPredator = 0;		
+		
+		for (Machine m : machines) {
+			if (m instanceof Robot) currentPrey ++;
+			if (m instanceof HunterBot) currentPredator ++;
+		}
+		
+		if (currentPrey == 0 && currentPredator == 0) {
+			reset();
+			return;
+		}
+		
+		if (currentPrey < Math.max(1, (float)currentPredator)/2) hunterActive = true;
+		else if (currentPredator == 0) {
+			hunterActive = false;
+			timerHunter++;
+			if (timerHunter >= fps * 3) {
+				reset();
+				timerHunter = 0;
+			}
+		}
+		
+		
+		
+	}
+	
+	private class MyMouseAdapter extends MouseAdapter {
+		
+	    public void mouseClicked(MouseEvent e) {
+	    	
+	        //System.out.println(e.toString());
+	    	
+	    	if (e.getClickCount() == 1 && infoButton.contains(getMousePosition())) {
+	    		showInfo = !showInfo;
+	    		displayRobotInfo();
+	    		displayPileInfo();
+	    	} 
+	    	
+	    	if (e.getClickCount() == 2 && room.getBound().contains(getMousePosition())) {
+	    		PVector pos = new PVector(e.getX(), e.getY());
+		        piles.add(new DustPile(pos));
+	    	}
+	    	
+	        for (DustPile pile: piles) {
+		    	if (e.isControlDown() && pile.checkMouseHit(e)) {
+		    		System.out.println("enlarged");
+		    		pile.enlarge();
+		    	}	
+	    		
+	        }
+	    //System.out.println("Pile added in " + pos);
+	    repaint();//have to repaint to show new pile modification
+	
+	    }
+	}
+	
+	public class MyKeyListener extends KeyAdapter {
+		@Override
+		public void keyPressed(KeyEvent e) {
+			if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+				space = true;
+				//System.out.println("pressed space");
+			}
+				
+		}
+
+		@Override
+		public void keyReleased(KeyEvent e) {
+			if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+				space = false;
+				//System.out.println("released space");
+			}
 		}
 	}
 }

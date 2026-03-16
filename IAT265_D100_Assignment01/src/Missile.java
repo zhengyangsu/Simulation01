@@ -24,7 +24,7 @@ public class Missile extends Machine{
 	    	super(dim, id);
 	        pos = new PVector((float) startX, (float) startY);
 	        speed = new PVector(0, 0);
-	        maxSpeed = 10;
+	        maxSpeed = 20;
 	        mLength = 30;
 		    mWidth = 6;
 		    wingWidth = 8;

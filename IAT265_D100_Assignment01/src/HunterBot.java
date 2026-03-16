@@ -21,7 +21,9 @@ public class HunterBot extends Machine{
 	public HunterBot(Dimension dim, int id) {
 		super(dim, id);
 		scale = dice.nextDouble(0.7, 0.8);
+		maxSpeed = 3;
 		color = RobotPane.amber;
+		engGainRatio = 20;
 		setShapes();
 	}
 
@@ -40,70 +42,48 @@ public class HunterBot extends Machine{
 	@Override
 	public void move(Dimension panelSize, PVector f) {
 		
-		
-		
-		//update State Timers
-	    if(currentBehaviourState == BehaviourState.AVOIDING) {
-	        timerAvoid++;
-			color = Color.RED; // Visual feedback for being in AVOIDING state
-			vel.limit(maxSpeed * 2f); 
-	        if (timerAvoid > 40) { // Cooldown period
-	            transitionTo(BehaviourState.HUNTING);
-	    		color = RobotPane.amber;
-	        }
-	    }else if(robotTarget != null) {
-	    	vel.normalize();
-	        vel.mult(3f * maxSpeed);
+		if(currentEnergyState != EnergyState.DEAD) {//else no movement
+			
+			//check energy level
+			checkEnergyLvl();
+			
+		    switch(currentBehaviourState) {
+		    
+		    	case AVOIDING:
+		    		timerAvoid++;
+					//color = Color.RED; //visual feedback for being in AVOIDING state
+					vel.limit(maxSpeed * 2f); 
+			        if (timerAvoid > 40) { //cooldown period
+			            transitionTo(BehaviourState.HUNTING);
+			    		//color = RobotPane.amber;
+			        }
+		    		break;
+		    		
+		    	case HUNTING:
+		    		if (robotTarget != null) {
+		    	    	vel.normalize();
+		    	        vel.mult(3f * maxSpeed);
+		    		}
+		    		break;
+		    		
+		    	case SEARCHING:
+		    		vel.setMag(maxSpeed);
+		    		break;
+		    		
+		    	case ESCAPING:
+		    		break;
+		    }
+	 
+		    vel.add(f); 
+			energy -= engLossRatio;
+		    pos.add(vel);	
+		    
 	    }else {
-	    	vel.limit(maxSpeed);
+	    	vel.set(0,0);
+	    	color = Color.GRAY;
+	    	lightOn = false;
 	    }
 
-	    switch(currentBehaviourState) {
-	    
-	    	case AVOIDING:
-	    		timerAvoid++;
-				color = Color.RED; // Visual feedback for being in AVOIDING state
-				vel.limit(maxSpeed * 2f); 
-		        if (timerAvoid > 40) { // Cooldown period
-		            transitionTo(BehaviourState.HUNTING);
-		    		color = RobotPane.amber;
-		        }
-	    		break;
-	    		
-	    	case HUNTING:
-	    		if (robotTarget != null) {
-	    	    	vel.normalize();
-	    	        vel.mult(3f * maxSpeed);
-	    		}
-	    		break;
-	    		
-	    	case SEARCHING:
-	    		vel.setMag(maxSpeed);
-	    		break;
-	    		
-	    	case ESCAPING:
-	    		break;
-	    }
- 
-	    if(energy >= 40) {
-	        currentEnergyState = EnergyState.NORMAL;
-	    } 
-	    else if(energy > 0) {
-	    	currentEnergyState = EnergyState.WEAK;
-	    } 
-	    else {
-	    	currentEnergyState = EnergyState.DEAD;
-	    	System.out.println("dead");
-    		color = Color.GRAY;
-    		vel.setMag(0);
-	    }
-	    
-	    if(currentEnergyState != EnergyState.DEAD) {
-	    	vel.add(f); 
-		    pos.add(vel);
-			energy -= engLossRatio;
-	    }
-	    
 	    //collisionValidate(panelSize);
 	    reset(panelSize);
 	}
@@ -155,22 +135,24 @@ public class HunterBot extends Machine{
 	@Override
 	public boolean approach() {
 		
+		boolean reach = false;
+		
+		if (currentEnergyState == EnergyState.DEAD) return false;
+		
 		if (robotTarget == null) {
 			vel.setMag(maxSpeed);
 			return false;		
 		}
 		
-		boolean reach = false;
-
 		PVector path = PVector.sub(robotTarget.getPos(), pos);
 		vel.add(path);
 		vel.normalize();
 		//System.out.println("Approaching target at " + robotTarget.getPos() + " with speed " + speed);
-		// check if bug reaches target (targetCollisionCheck(robotTarget) && path.mag() - (scale * dia) / 2 <= 0 )
+		//check if bug reaches target
 		if (targetCollisionCheck(robotTarget) && path.mag() - (scale * dia) / 2 <= 0) {
 			reach = true;
 			collectCount++;
-			energy += robotTarget.getScale() * engGainRatio;
+			energy += robotTarget.getSize() * engGainRatio;
 
 			//System.out.println("Reached target at " + currentTarget.getPos());
 			//speed.mult(0.5f);
@@ -181,13 +163,9 @@ public class HunterBot extends Machine{
 	
 	public boolean found(Robot r) {
 		if (r == null) return false;
-		boolean intersect = getFOV().intersects(r.getBounds()) || 
-                getBoundary().intersects(r.getBounds());
-
-		if (intersect) {
-			return true;
-		}
-		return false;
+		boolean intersect = getFOV().intersects(r.getBounds()) || getBoundary().intersects(r.getBounds());
+		if (intersect) vel.mult(1.5f);
+		return intersect;
 	}
 
 	public void setTarget(Robot target) {
@@ -198,4 +176,12 @@ public class HunterBot extends Machine{
 		return robotTarget;
 	}
 
+	public boolean hunterCollisionCheck(Hunter h) {
+		
+		boolean intersect = (getBoundary().intersects(h.getBoundary().getBounds2D()) && h.getBoundary().intersects(getBoundary().getBounds2D()));
+		if (intersect) energy += 5;
+		
+		return intersect;
+	}
+	
 }

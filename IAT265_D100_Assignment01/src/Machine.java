@@ -6,6 +6,7 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.*;
@@ -21,11 +22,11 @@ public abstract class Machine {
 	//region
 	protected PVector pos, vel;
 	protected float maxSpeed, sight;
-	protected int width, height, dia, id, targetId, collectCount, timerAvoid, timerLight, timerEscape;
+	protected int width, height, dia, id, targetId, collectCount, timerAvoid, timerLight, timerEscape, timerWeak, deadFrameCount;
 	protected Color color;
 	protected Random dice = new Random();
 	protected double scale, theta;
-	protected boolean lightOn, hunt, seen, reTarget, displayInfo, dead;
+	protected boolean lightOn, hunt, seen, reTarget, displayInfo, showWave;
 	protected DustPile dustTarget;
 	protected ArrayList<DustPile> targets;
 	protected Shape outer, inner, button, panelArc, panelLineL, panelLineR, eye, browL, browR, fov;
@@ -49,11 +50,14 @@ public abstract class Machine {
 	protected EnergyState currentEnergyState;
 	protected int energy, fullEnergy;
 	protected float engGainRatio = 100;                   //Energy gained per food size unit 
-	protected float engLossRatio = fullEnergy/(30*15);    //Energy loss per frame
+	protected float engLossRatio = fullEnergy/(450);    //Energy loss per frame
+	protected String[] infoLines;
 	//endregion
 	
 	//constructor
 	public Machine(Dimension dim, int id) {
+		
+		//region
 		this.id = id;
 		this.dim = dim;
 		dia = 70;
@@ -67,10 +71,11 @@ public abstract class Machine {
 		vel = new PVector(dice.nextInt(1, 10), dice.nextInt(1, 10));
 		vel.limit(maxSpeed);
 		theta = Math.toRadians(90);
-		lightOn = false;
+		lightOn = true;
 		robotArea = new Area();
 		timerLight = 0;
 		timerEscape = 0;
+		timerWeak = 0;
 		color = RobotPane.green;
 		dustTarget = null;
 		hunt = true;
@@ -78,12 +83,15 @@ public abstract class Machine {
 		collectCount = 0;
 		currentBehaviourState = BehaviourState.SEARCHING;
 		currentEnergyState = EnergyState.NORMAL;
-		energy = 1000;
-		fullEnergy = 1000;
+		energy = 500;
+		fullEnergy = 700;
 		engGainRatio = 100;                   //Energy gained per food size unit 
 		engLossRatio = fullEnergy/(30*15);
-		dead = false;
+		showWave = true;
+		//endregion
+		
 		setShapes();
+		
 	}
 	
 	protected void setShapes() {
@@ -128,14 +136,24 @@ public abstract class Machine {
 	
 	public void draw(Graphics2D g) {
 		
+		infoLines = new String[] {getClass().getName(), currentBehaviourState.name(), currentEnergyState.name(), "Energy " + energy};
 		AffineTransform af = g.getTransform();
 		
 		g.setColor(color);
 		g.setStroke(new BasicStroke(RobotPane.stroke * 1.5f));
 		
+		//flicker on weak
+		if (currentEnergyState == EnergyState.WEAK) {
+		    //blink every 12 frames: visible 6 frames, invisible 6 frames
+		    if (timerLight % 12 < 6) {
+		        timerLight++;
+		        return; //skips drawing and exit
+		    }
+		    timerLight++;
+		}
+		
+		
 		//transform stack
-		
-		
 		g.translate(pos.x, pos.y);
 		g.rotate(theta);
 		g.rotate(vel.heading());
@@ -144,8 +162,6 @@ public abstract class Machine {
 		    g.scale(-1, 1); // flip
 		}
 
-		
-		
 		// outer circle
 		g.setColor(Color.BLACK);
 		g.fill(outer);
@@ -156,7 +172,7 @@ public abstract class Machine {
 		g.draw(inner);
 		
 		// button circle
-		if (timerLight > 24) {
+		if (timerLight > 24 && lightOn) {
 			g.setColor(color);
 		    g.fill(button);
 		    timerLight = 0;
@@ -184,10 +200,15 @@ public abstract class Machine {
 		g.draw(browR);
 
 		if (currentEnergyState == EnergyState.DEAD) {
-	  		drawWaves(g);
-			//g.draw(new Ellipse2D.Double(-dia/2, -dia/2, dia, dia));
 
-	    }
+		    if (deadFrameCount < 48) {
+
+		        if (deadFrameCount % 2 == 0) {
+		            drawWaves(g);
+		        }
+		        deadFrameCount++;
+		    }
+		}
 		
 		//robot area outline
 		g.setColor(RobotPane.amber);
@@ -200,35 +221,10 @@ public abstract class Machine {
 			g.draw(getFOV());
 		}
 		
-	    if (displayInfo) {
-	    	// Display scale
-			g.setColor(Color.WHITE);
-		    g.setFont(new Font("Monospaced", Font.BOLD, 16));
-		    String txtScale = "Scale " + String.format("%.2f", scale);
-		    String txtSpeed = "Speed "+ String.format("%.2f", vel.mag());
-		    String txtID = "ID " + id;
-		    String txtHunt = "Hunt " + hunt;
-		    String txtSeen = "Seen " + seen;
-		    if (dustTarget != null) targetId = dustTarget.getId();
-		    String txtTargetId = "target " + targetId;
-		    String txtReTarget = "reTarget " + reTarget;
-		    String txtCollect = "collect " + collectCount;
-		    String txtEnergy = "energy " + energy;
-		    
-	    	g.drawString(txtScale, pos.x, pos.y);
-		    g.drawString(txtSpeed, pos.x, pos.y+15);
-		    g.drawString(txtID, pos.x, pos.y+30);
-		    g.drawString(txtHunt, pos.x, pos.y+45);
-		    g.drawString(txtSeen, pos.x, pos.y+60);
-		    g.drawString(txtTargetId, pos.x, pos.y+75);
-		    g.drawString(txtReTarget, pos.x, pos.y+90);
-		    g.drawString(txtCollect, pos.x, pos.y+105);
-		    g.drawString(txtEnergy, pos.x, pos.y+120);
+		if (displayInfo) {
+		    displayInfo(g);
+		}
 
-	    }
-   
-	    
-	    
 	}
 	
 	public abstract void move(Dimension panelSize, PVector f);
@@ -251,7 +247,7 @@ public abstract class Machine {
 		//intersects
 		if (FOVOutline.intersects(robotBound) || myOutline.intersects(robotBound) || robotOutline.intersects(myBound)) {
 			forceVector = PVector.sub(this.pos, r.pos);
-			color = new Color(255,0,0);
+			//color = new Color(255,0,0);
 			seen = true;
 			hunt = false;
 			if (targets != null && targets.size() > 1) {
@@ -261,7 +257,7 @@ public abstract class Machine {
 			}
 
 		}else {
-			color = RobotPane.green;
+			//color = RobotPane.green;
 			seen = false;
 			timerAvoid ++;
 			if (timerAvoid > 96) {
@@ -305,7 +301,7 @@ public abstract class Machine {
 	    this.hunt = (newState == BehaviourState.HUNTING);
 	    
 	    //update visual feedback
-	    if (newState == BehaviourState.HUNTING) color = RobotPane.green;
+	    //if (newState == BehaviourState.HUNTING) color = RobotPane.green;
 	}
 	
 	protected void reset(Dimension panelSize) {
@@ -329,9 +325,8 @@ public abstract class Machine {
 	protected void drawWaves(Graphics2D g) {
 		
 		for (int i = 1; i <= 3; i++) {
-			g.scale(i, i);
-			g.draw(new Ellipse2D.Double( -dia/2, -dia/2, dia, dia));
-		}
+	        g.draw(new Ellipse2D.Double(-dia*i/2, -dia*i/2, dia*i, dia*i));
+	    }
 		
 	}
 	
@@ -389,12 +384,55 @@ public abstract class Machine {
 	}
 
 	public void kill() {
-		dead = true;
 		currentEnergyState = EnergyState.DEAD;
+	    deadFrameCount = 0;
 	}
 	
 	public boolean isDead() {
-		return dead;
+		if (currentEnergyState == EnergyState.DEAD) return true;
+		return false;
+	}
+	
+	public boolean isGone() {
+		if (deadFrameCount >= 48) return true;
+		return false;
+	}
+	
+	protected void checkEnergyLvl() {
+		if (energy >= 40) {
+	        currentEnergyState = EnergyState.NORMAL;
+	        vel.setMag(maxSpeed);
+	    } 
+	    else if (energy > 0) {
+	    	currentEnergyState = EnergyState.WEAK;
+	    	vel.setMag(maxSpeed/2);
+	    } 
+	    else {
+	    	currentEnergyState = EnergyState.DEAD;
+	    	vel.setMag(0);
+	    	color = Color.GRAY;
+	    }
+	}
+	
+	protected void displayInfo(Graphics2D g) {
+		
+		g.setColor(Color.WHITE);
+	    g.setFont(new Font("Monospaced", Font.BOLD, 16));
+	    FontMetrics fm = g.getFontMetrics();
+
+	    int lineHeight = fm.getHeight();
+	    int totalHeight = lineHeight * infoLines.length;
+
+	    //y-coordinate starts above the robot
+	    double yStart = -dia/2.0 * scale - 10 - totalHeight; //padding above robot
+
+	    for (int i = 0; i < infoLines.length; i++) {
+	        String line = infoLines[i];
+	        //left-align relative to robot's center
+	        double x = pos.x - scale * dia / 2.0; // left edge of robot circle
+	        double y = pos.y + yStart + i * lineHeight;
+	        g.drawString(line, (float)x, (float)y);
+	    }
 	}
 }
 

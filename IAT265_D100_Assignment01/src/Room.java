@@ -15,13 +15,6 @@ public class Room {
 	private float stroke;
 	private Color color;
 	private PVector pos;
-	
-	/*
-	private Rectangle2D.Double rightWall;
-	private Rectangle2D.Double leftWall;
-	private Rectangle2D.Double topWall;
-	private Rectangle2D.Double bottomWall;
-	*/
 	private Rectangle2D room;
 	private Line2D.Double rightEdge;
 	private Line2D.Double leftEdge;
@@ -223,51 +216,7 @@ public class Room {
 	    d = (height - margin) - y - radius;
 	    if (d < minDist)
 	        force.y -= wallCoef / Math.max(d, safe);
-	    
-	    /*
-	     * Double distance = 0.0;
-	    float d = (width - margin) - x - radius;
-		distance = rightEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
-		force.add(new PVector((float)(-wallCoef / Math.pow(distance, 2)), 0.0f));
-		
-	    d = x - margin - radius;
-		distance = leftEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
-		force.add(new PVector((float)(+wallCoef / Math.pow(distance, 2)), 0.0f));
-		
-		d = y - margin - radius;
-		distance = topEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
-		force.add(new PVector((float)(+wallCoef / Math.pow(distance, 2)), 0.0f));
-		
-		d = y - margin - radius;
-		distance = bottomEdge.ptLineDist(r.getPos().x, r.getPos().y) - r.getDia() * r.getScale(); 
-		force.add(new PVector((float)(-wallCoef / Math.pow(distance, 2)), 0.0f));
-		
-	    
-	    float minDist = r.getDia() * 1.5f;      // how far robot senses wall
-	    float safe = 6f;         // prevents infinite force
-	    float maxForce = 0.4f;   // caps acceleration
 
-	    //force = wallCoef / d
-	    // RIGHT
-	    float d = (width - margin) - x - radius;
-	    if (d < minDist)
-	        force.x -= Math.min(maxForce, wallCoef / Math.max(d, safe));
-
-	    // LEFT
-	    d = x - margin - radius;
-	    if (d < minDist)
-	        force.x += Math.min(maxForce, wallCoef / Math.max(d, safe));
-
-	    // TOP
-	    d = y - margin - radius;
-	    if (d < minDist)
-	        force.y += Math.min(maxForce, wallCoef / Math.max(d, safe));
-
-	    // BOTTOM
-	    d = (height - margin) - y - radius;
-	    if (d < minDist)
-	        force.y -= Math.min(maxForce, wallCoef / Math.max(d, safe));
-		*/
 	    return force;
 	}
 }
