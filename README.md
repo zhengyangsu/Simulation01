@@ -28,6 +28,26 @@ A Java-based graphical simulation featuring autonomous robots, hunters, and ener
 - `Room.java`: Handles environment boundaries and physics.
 - `Missile.java`: Projectiles fired by the Hunter.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/01.png" width="100%" alt="1. Robots and hunters"><br><sub>1. Robots and hunters</sub></td>
+    <td align="center"><img src="docs/screenshots/02.png" width="100%" alt="2. Hunter fires a missile"><br><sub>2. Hunter fires a missile</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/03.png" width="100%" alt="3. Hunter and a destroyed robot"><br><sub>3. Hunter and a destroyed robot</sub></td>
+    <td align="center"><img src="docs/screenshots/04.png" width="100%" alt="4. Debug mode"><br><sub>4. Debug mode</sub></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="docs/screenshots/05.gif" width="50%" alt="Simulation demo"><br><sub>5. Simulation demo</sub></td>
+  </tr>
+</table>
+
+## Download (Windows)
+
+Prebuilt Windows launchers for every development phase are in [`dist/`](dist/): `phase1` to `phase4`, each with its own `.exe`, `.jar` and `lib/core.jar`. Keep each phase folder together and double-click the `.exe` (Java 17 or newer must be installed).
+
 ## Requirements
 
 - Java JDK 8 or higher.
