@@ -35,12 +35,12 @@ A Java-based graphical simulation featuring autonomous robots, hunters, and ener
     <td colspan="2" align="center"><img src="docs/screenshots/05.gif" width="50%" alt="Simulation demo"><br><sub>Simulation demo</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/01.png" width="100%" alt="Robots and hunters"><br><sub>Robots and hunters</sub></td>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/02.png" width="100%" alt="Hunter fires a missile"><br><sub>Hunter fires a missile</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/03.png" width="100%" alt="Hunter and a destroyed robot"><br><sub>Hunter and a destroyed robot</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/03.png" width="100%" alt="Hunter and a destroyed robot"><br><sub>Hunter and a destroyed robot</sub></td>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/04.png" width="100%" alt="Debug mode"><br><sub>Debug mode</sub></td>
+    <td width="50%"></td>
   </tr>
 </table>
 
