@@ -2,6 +2,19 @@
 
 A Java-based graphical simulation featuring autonomous robots, hunters, and energy management. This project demonstrates complex agent behaviors, state machines, and interactive simulation environments using Java Swing and Graphics2D.
 
+## Screenshots
+
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/05.gif" width="100%" alt="Simulation demo"><br><sub>Simulation demo</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/02.png" width="100%" alt="Hunter fires a missile"><br><sub>Hunter fires a missile</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/03.png" width="100%" alt="Hunter and a destroyed robot"><br><sub>Hunter and a destroyed robot</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/04.png" width="100%" alt="Debug mode"><br><sub>Debug mode</sub></td>
+  </tr>
+</table>
+
 ## Features
 
 - **Autonomous Robots**: Robots navigate the environment to collect dust piles for energy while avoiding predators.
@@ -27,19 +40,6 @@ A Java-based graphical simulation featuring autonomous robots, hunters, and ener
 - `DustPile.java`: Energy sources for robots.
 - `Room.java`: Handles environment boundaries and physics.
 - `Missile.java`: Projectiles fired by the Hunter.
-
-## Screenshots
-
-<table width="100%">
-  <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/05.gif" width="100%" alt="Simulation demo"><br><sub>Simulation demo</sub></td>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/02.png" width="100%" alt="Hunter fires a missile"><br><sub>Hunter fires a missile</sub></td>
-  </tr>
-  <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/03.png" width="100%" alt="Hunter and a destroyed robot"><br><sub>Hunter and a destroyed robot</sub></td>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/04.png" width="100%" alt="Debug mode"><br><sub>Debug mode</sub></td>
-  </tr>
-</table>
 
 ## Download (Windows)
 
